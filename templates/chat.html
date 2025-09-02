@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title data-lang="chat_title">Sahaay-AI Daily Check-in</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  .transition-smooth { transition: all 0.3s ease-in-out; }
+  .chat-box::-webkit-scrollbar { width: 6px; }
+  .chat-box::-webkit-scrollbar-thumb { background-color: rgba(107,114,128,0.5); border-radius: 3px; }
+
+  /* Typing indicator */
+  .typing-indicator span {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 2px;
+    border-radius: 50%;
+    background-color: #a1a1aa;
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+  .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+  .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1.0); }
+  }
+
+  /*
+  The 'hidden' class is a Tailwind CSS utility.
+  It's already included by default, so we don't need to define it here.
+  */
+</style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100">
+
+<div id="toast" class="toast fixed bottom-8 right-8 z-[1000] min-w-[250px] p-4 rounded-xl shadow-lg text-white font-medium" role="alert" aria-live="assertive"></div>
+
+<div id="crisisBanner" class="hidden bg-red-600 dark:bg-red-700 text-white px-4 py-2 text-center font-semibold animate-pulse" role="alert" aria-live="assertive" data-lang="crisis_banner">
+  ⚠️ Crisis detected! Please seek help immediately.
+</div>
+
+<div id="consentModal" role="dialog" aria-labelledby="consentTitle" aria-describedby="consentDesc" tabindex="0"
+     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-[90%] max-w-md flex flex-col gap-4">
+    <h2 id="consentTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="consent_title">Privacy & Consent</h2>
+    <p id="consentDesc" class="text-sm text-gray-600 dark:text-gray-300" data-lang="consent_desc">
+      We store only anonymized mood check-ins to improve wellbeing support. You can continue
+      <b>with consent</b> (data helps insights) or in <b>anonymous mode</b> (no storage). You can delete your data anytime.
+      <span title="Data is anonymized and kept for 30 days">❓</span>
+    </p>
+    <div class="flex flex-col gap-2">
+      <button id="consentAgree" class="bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" tabindex="0" data-lang="consent_agree_button">
+        I Agree (Save Anonymized Check-ins)
+      </button>
+      <button id="consentAnon" class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-6 py-3 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-smooth" tabindex="0" data-lang="consent_anon_button">
+        Use Anonymous Mode (Don’t Save)
+      </button>
+      <button id="consentExit" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline" tabindex="0" data-lang="consent_exit_button">
+        Exit
+      </button>
+    </div>
+    <p class="text-xs text-gray-500 dark:text-gray-400" data-lang="consent_footer">
+      Retention: 30 days • Right to Erase: “Delete my data” in header • Crisis: Helplines available
+    </p>
+  </div>
+</div>
+
+<div id="langModal" role="dialog" aria-labelledby="langTitle" aria-describedby="langDesc" tabindex="0"
+     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden">
+  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-80 flex flex-col gap-4">
+    <h2 id="langTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="lang_title">Select Your Language</h2>
+    <p id="langDesc" class="text-sm text-gray-600 dark:text-gray-300" data-lang="lang_desc">Choose the language for your chat and prompts.</p>
+    <select id="langSelect" class="p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-700 dark:text-gray-100 w-full" tabindex="0">
+      <option value="" disabled selected data-lang="select_lang">Select Language</option>
+      <option value="en">English</option>
+      <option value="hi">Hindi</option>
+      <option value="es">Spanish</option>
+      <option value="ta">Tamil</option>
+    </select>
+    <button id="langSubmit" class="bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" tabindex="0" data-lang="lang_submit_button">Continue</button>
+  </div>
+</div>
+
+<div id="mainContainer" class="flex flex-col h-screen max-w-4xl mx-auto p-4 hidden">
+
+  <header class="flex justify-between items-center mb-6 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
+    <h1 id="pageTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="page_title">
+      Daily Check-in
+    </h1>
+    <div class="flex items-center gap-3">
+      <a href="/dashboard" id="dashboardLink" class="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-500 transition-smooth" data-lang="dashboard_button">
+        <i data-lucide="home"></i> Dashboard
+      </a>
+
+      <div class="relative inline-block text-left">
+          <button id="userDropdownBtn" class="flex items-center justify-center w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-smooth" aria-haspopup="true" aria-expanded="true">
+              <i data-lucide="user"></i>
+          </button>
+          <div id="userDropdownMenu" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition-smooth hidden z-20" role="menu" aria-orientation="vertical" aria-labelledby="userDropdownBtn">
+              <div class="py-1" role="none">
+                  <div id="usernameDisplay" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200" role="menuitem">
+                      <span id="displayName">Loading...</span>
+                  </div>
+                  <hr class="border-gray-200 dark:border-gray-700 mx-2">
+                  <div id="anonymousToggle" class="text-gray-700 dark:text-gray-200 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-smooth" role="menuitem">
+                      <div class="flex items-center justify-between">
+                          <span>Anonymous Mode</span>
+                          <label class="flex items-center cursor-pointer">
+                              <div class="relative">
+                                  <input type="checkbox" id="anonymousCheckbox" class="sr-only">
+                                  <div class="block bg-gray-600 dark:bg-gray-400 w-10 h-6 rounded-full"></div>
+                                  <div class="dot absolute left-1 top-1 bg-white dark:bg-gray-800 w-4 h-4 rounded-full transition-all duration-300"></div>
+                              </div>
+                          </label>
+                      </div>
+                  </div>
+                  <a href="#" id="eraseBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500 hover:text-white rounded-md transition-smooth" data-lang="delete_data_button" role="menuitem">
+                      <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Data
+                  </a>
+                  <a href="/logout" id="logoutBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-smooth" role="menuitem">
+                      <i data-lucide="log-out" class="w-4 h-4"></i> Logout
+                  </a>
+              </div>
+          </div>
+      </div>
+      <button id="themeToggleBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg transition-smooth bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600">
+        <i data-lucide="moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <div id="consent-card" class="bg-white dark:bg-gray-800 rounded-2xl shadow p-4 mb-4">
+    <h2 class="text-lg font-semibold mb-2" data-lang="consent_status_title">Consent Status <span title="Data is anonymized, kept for 30 days">❓</span></h2>
+    <p id="consent-status" class="text-gray-700 dark:text-gray-300" data-lang="consent_status_loading">Loading...</p>
+  </div>
+
+  <div class="flex flex-col flex-1 bg-white dark:bg-gray-800 rounded-2xl shadow overflow-hidden">
+    <div id="chatBox" class="flex-1 flex flex-col gap-3 p-4 overflow-y-auto chat-box" role="log" aria-live="polite"></div>
+    <div class="flex gap-2 items-center p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+      <input id="message" type="text" placeholder="Type your message..." data-lang="input_placeholder"
+             class="flex-1 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100">
+      <button id="sendBtn" class="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" data-lang="send_button">
+        <i data-lucide="send"></i> Send
+      </button>
+    </div>
+  </div>
+
+  <p id="chatError" class="text-red-500 mt-2 hidden" data-lang="chat_error"></p>
+  
+<footer class="text-center text-xs text-gray-500 mt-4">
+    <p data-lang="privacy_policy_link">
+        <a href="/privacy" class="underline">Privacy & Data Policy</a>
+    </p>
+    <button id="resetConsentBtn"
+            class="mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600" data-lang="reset_consent_button">
+        Reset Consent
+    </button>
+</footer>
+</div>
+
+<script>
+    // ======= DOM REFS =======
+    const chatBox = document.getElementById('chatBox');
+    const input = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatError = document.getElementById('chatError');
+    const crisisBanner = document.getElementById('crisisBanner');
+    
+    const langModal = document.getElementById('langModal');
+    const consentModal = document.getElementById('consentModal');
+    const mainContainer = document.getElementById('mainContainer');
+    const langSelect = document.getElementById('langSelect');
+    const langSubmitBtn = document.getElementById('langSubmit');
+    const consentAgreeBtn = document.getElementById('consentAgree');
+    const consentAnonBtn = document.getElementById('consentAnon');
+    const consentExitBtn = document.getElementById('consentExit');
+    const consentStatusEl = document.getElementById('consent-status');
+    const dashboardLink = document.getElementById('dashboardLink');
+    const resetConsentBtn = document.getElementById('resetConsentBtn');
+
+    // NEW: User dropdown refs
+    const userDropdownBtn = document.getElementById('userDropdownBtn');
+    const userDropdownMenu = document.getElementById('userDropdownMenu');
+    const anonymousCheckbox = document.getElementById('anonymousCheckbox');
+    const displayNameSpan = document.getElementById('displayName');
+    const eraseBtn = document.getElementById('eraseBtn'); // Now in the dropdown
+
+    let currentLang = 'en';
+
+    // Master function to control screen visibility
+    function showScreen(screenToShow) {
+    // Hide all screens first by adding the 'hidden' class
+    langModal.classList.add('hidden');
+    consentModal.classList.add('hidden');
+    mainContainer.classList.add('hidden');
+
+    // Then, show the specific screen requested by removing the 'hidden' class
+    if (screenToShow === 'language') {
+        langModal.classList.remove('hidden');
+    } else if (screenToShow === 'consent') {
+        consentModal.classList.remove('hidden');
+    } else if (screenToShow === 'chat') {
+        mainContainer.classList.remove('hidden');
+        fetchPrompt(); // Automatically fetch prompt for the chat screen
+    }
+}
+
+    // ======= TRANSLATION & MODAL FUNCTIONS =======
+    async function applyTranslations() {
+      try {
+        const res = await fetch(`/translations?lang=${currentLang}`);
+        const translations = await res.json();
+        
+        document.querySelectorAll('[data-lang]').forEach(el => {
+          const key = el.getAttribute('data-lang');
+          if (translations[key]) {
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+              el.placeholder = translations[key];
+            } else if (el.tagName === 'BUTTON') {
+              // Preserve inner icons if they exist
+              el.innerHTML = `<i data-lucide="send"></i> ${translations[key]}`;
+            } else if (el.tagName === 'A') {
+              // Handle dashboard link separately to avoid changing icon
+              if (key === 'dashboard_button') {
+                el.innerHTML = `<i data-lucide="home"></i> ${translations[key]}`;
+              } else if (key === 'delete_data_button') {
+                el.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i> ${translations[key]}`;
+              } else {
+                el.textContent = translations[key];
+              }
+            } else {
+              el.textContent = translations[key];
+            }
+          }
+        });
+        document.title = translations['chat_title'] || 'Sahaay-AI Daily Check-in';
+        document.documentElement.lang = currentLang;
+        lucide.createIcons();
+      } catch (err) {
+        console.error("Translation fetch error:", err);
+      }
+    }
+    
+    function updateConsentStatus() {
+      const hasConsent = localStorage.getItem('hasConsent') === 'true';
+      if (hasConsent) {
+        consentStatusEl.textContent = 'Active (Data is being saved)';
+      } else {
+        consentStatusEl.textContent = 'Anonymous Mode (No data is saved)';
+      }
+    }
+
+    // NEW: Function to handle anonymous session on frontend
+    async function switchToAnonymous() {
+      const response = await fetch('/api/anonymous_login', { method: 'POST' });
+      if (response.ok) {
+        localStorage.setItem('hasConsent', 'false');
+        updateConsentStatus();
+        showToast('Switched to Anonymous Mode', 'success');
+        fetchUserDisplayName();
+      }
+    }
+
+    // NEW: Function to handle authenticated session switch
+    async function switchToAuthenticated() {
+      // Reloading the page will force a re-check of the login state and clear the anonymous session.
+      window.location.reload(); 
+    }
+
+    // NEW: Function to fetch user info for display
+    async function fetchUserDisplayName() {
+      try {
+        const res = await fetch('/api/get_user_info');
+        const data = await res.json();
+        if (data.username) {
+          displayNameSpan.textContent = data.username;
+          anonymousCheckbox.checked = data.is_anonymous;
+          if (data.is_anonymous) {
+             dashboardLink.style.display = 'none'; // Hide dashboard link for anonymous users
+             eraseBtn.style.display = 'none'; // Hide erase button for anonymous users
+          } else {
+             dashboardLink.style.display = '';
+             eraseBtn.style.display = '';
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch user info:", err);
+        displayNameSpan.textContent = "Guest";
+        anonymousCheckbox.checked = true;
+      }
+    }
+
+    // Initial state check
+    function checkInitialState() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        const selectedLang = localStorage.getItem('selectedLang') || langParam;
+        const hasConsent = localStorage.getItem('hasConsent');
+
+        if (selectedLang && hasConsent) {
+            currentLang = selectedLang;
+            showScreen('chat'); // Show chat if both are set
+            updateConsentStatus();
+        } else if (selectedLang) {
+            currentLang = selectedLang;
+            showScreen('consent'); // Show consent if only language is set
+        } else {
+            showScreen('language'); // Show language if neither is set
+        }
+        dashboardLink.href = `/dashboard?lang=${currentLang}`;
+        applyTranslations();
+        fetchUserDisplayName();
+    }
+
+    // ======= EVENT LISTENERS =======
+    // In your language modal handler
+    langSubmitBtn.addEventListener('click', async () => {
+        const selectedValue = langSelect.value;
+        if (selectedValue) {
+            currentLang = selectedValue;
+            localStorage.setItem('selectedLang', currentLang);
+
+            // Send a request to the backend to set the session language
+            await fetch('/set_language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language: currentLang })
+            });
+            
+            applyTranslations();
+            showScreen('consent');
+        }
+    });
+
+    consentAgreeBtn.addEventListener('click', () => {
+        localStorage.setItem('hasConsent', 'true');
+        updateConsentStatus();
+        showScreen('chat'); // Move to main chat screen
+    });
+    
+    consentAnonBtn.addEventListener('click', () => {
+        localStorage.setItem('hasConsent', 'false');
+        updateConsentStatus();
+        showScreen('chat'); // Move to main chat screen
+    });
+
+    consentExitBtn.addEventListener('click', () => {
+        window.location.href = 'https://www.google.com'; // or any other exit URL
+    });
+    resetConsentBtn.addEventListener('click', () => {
+        localStorage.removeItem('selectedLang');
+        localStorage.removeItem('hasConsent');
+        window.location.reload();
+    });
+
+    // NEW: Dropdown and anonymous mode toggle handlers
+    userDropdownBtn.addEventListener('click', () => {
+        userDropdownMenu.classList.toggle('hidden');
+    });
+
+    window.addEventListener('click', (e) => {
+        if (!userDropdownBtn.contains(e.target) && !userDropdownMenu.contains(e.target)) {
+            userDropdownMenu.classList.add('hidden');
+        }
+    });
+
+    anonymousCheckbox.addEventListener('change', async () => {
+        if (anonymousCheckbox.checked) {
+            await switchToAnonymous();
+        } else {
+            await switchToAuthenticated();
+        }
+    });
+
+    // ======= CHAT UI HELPERS =======
+    function appendMessage(text, sender, type = 'dialogflow') {
+        const msgDiv = document.createElement('div');
+        let senderClasses = '';
+
+        if (sender === 'user') {
+            senderClasses = 'bg-teal-600 text-white rounded-br-none self-end ml-auto';
+        } else if (type === 'tip') {
+            senderClasses = 'bg-yellow-200 text-yellow-900 rounded-bl-none self-start';
+        } else {
+            senderClasses = 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-none self-start';
+        }
+
+        msgDiv.className = `p-3 rounded-2xl max-w-[70%] shadow-md ${senderClasses}`;
+        msgDiv.textContent = text;
+
+        if (sender !== 'user') msgDiv.setAttribute('aria-live', 'polite');
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function showTyping() {
+        const typingDiv = document.createElement('div');
+        typingDiv.id = 'typingIndicator';
+        typingDiv.className = 'flex items-center space-x-1 p-3 text-sm text-gray-500 dark:text-gray-400';
+        typingDiv.innerHTML = `<span></span><span></span><span></span>`;
+        chatBox.appendChild(typingDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function hideTyping() {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+    }
+
+    // ======= Daily prompt fetch =======
+    async function fetchPrompt() {
+        try {
+            const res = await fetch(`/daily_checkin_prompt?lang=${currentLang}`);
+            const data = await res.json();
+            if (data.prompt) {
+                appendMessage(data.prompt, 'bot');
+            }
+        } catch (err) {
+            console.error("Daily check-in error:", err);
+        }
+    }
+
+    // ======= SEND MESSAGE (main flow) =======
+    async function sendMessage(msg, isUser = true) {
+        if (!msg) return;
+        if (isUser) {
+            appendMessage(msg, 'user');
+            input.value = '';
+        }
+
+        try {
+            showTyping();
+
+            const res = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg, lang: currentLang })
+            });
+
+            const data = await res.json();
+
+            if (data.intent === "CRISIS_DETECTED") {
+                crisisBanner.textContent = data.response;
+                crisisBanner.classList.remove('hidden');
+                appendMessage(data.response, 'bot');
+            } else {
+                crisisBanner.classList.add('hidden');
+                if (data.response) {
+                    appendMessage(data.response, 'bot');
+                }
+            }
+
+        } catch (err) {
+            chatError.textContent = "Failed to send message.";
+            chatError.classList.remove('hidden');
+            console.error('sendMessage error', err);
+        } finally {
+            hideTyping();
+        }
+    }
+
+    sendBtn.addEventListener('click', () => sendMessage(input.value));
+    input.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(input.value); });
+
+    // ======= ERASE (now in dropdown) =======
+    eraseBtn.addEventListener('click', async (e) => {
+        e.preventDefault(); // Prevent default link behavior
+        if (!confirm('This will delete all of your stored check-ins. Continue?')) return;
+        try {
+            const res = await fetch('/erase', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.ok) showToast(`Deleted ${data.deleted || 0} entries.`);
+            else showToast(`Erase error: ${data.error || 'Unknown'}`, 'error');
+        } catch (e) {
+            showToast('Erase failed. Try again later.', 'error');
+        }
+    });
+
+    function checkInitialState() {
+        fetch('/api/get_user_info')
+            .then(response => response.json())
+            .then(data => {
+                const displayNameSpan = document.getElementById('displayName');
+                const anonymousCheckbox = document.getElementById('anonymousCheckbox');
+                
+                // Update the display name
+                displayNameSpan.textContent = data.username;
+                
+                // Set the anonymous checkbox state
+                if (data.is_anonymous) {
+                    anonymousCheckbox.checked = true;
+                    // You may also want to disable other features for anonymous mode here
+                } else {
+                    anonymousCheckbox.checked = false;
+                }
+            })
+            .catch(error => console.error('Error fetching user info:', error));
+    }
+
+    // Call this function on page load
+    document.addEventListener("DOMContentLoaded", () => {
+        // ... existing calls
+        checkInitialState(); // Add this line
+    });
+
+    // ======= DARK MODE FIX =======
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeIcon = themeToggleBtn.querySelector('i');
+
+    function updateThemeIconAndBody() {
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.documentElement.classList.add('dark');
+            themeIcon.setAttribute('data-lucide', 'sun');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeIcon.setAttribute('data-lucide', 'moon');
+        }
+        lucide.createIcons();
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+        updateThemeIconAndBody();
+    });
+
+    // Initial setup on page load
+    document.addEventListener("DOMContentLoaded", () => {
+        updateThemeIconAndBody();
+        checkInitialState();
+    });
+
+    // Activate icons
+    lucide.createIcons();
+
+    // Placeholder toast function
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.backgroundColor = type === 'success' ? '#10B981' : '#EF4444';
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+</script>
+</body>
+</html>

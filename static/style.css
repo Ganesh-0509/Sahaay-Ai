@@ -1,0 +1,58 @@
+/* ---------------------- Body & Fonts ---------------------- */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f0f9ff;
+    transition: all 0.3s ease-in-out;
+}
+
+/* ---------------------- Smooth Transitions ---------------------- */
+.transition-smooth { transition: all 0.3s ease-in-out; }
+
+/* ---------------------- Scrollbars ---------------------- */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.chat-box::-webkit-scrollbar { width: 6px; }
+.chat-box::-webkit-scrollbar-thumb { background-color: rgba(107,114,128,0.5); border-radius: 3px; }
+
+/* ---------------------- Dashboard Cards ---------------------- */
+.card {
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    transition: all 0.3s ease-in-out;
+}
+.card:hover { box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+
+/* ---------------------- Sidebar ---------------------- */
+#sidebar {
+    background-color: white;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1),0 4px 6px -2px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease-in-out;
+}
+#sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.125rem;
+    color: #374151;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+}
+#sidebar a:hover { color: #14b8a6; }
+
+/* ---------------------- Header ---------------------- */
+header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* ---------------------- Sidebar Toggle ---------------------- */
+.sidebar-open { transform: translateX(100%); }
+.main-shrink { margin-left: 16rem; }
+
+/* ---------------------- Dark Mode ---------------------- */
+.dark body { background-color: #111827; color: #f3f4f6; }

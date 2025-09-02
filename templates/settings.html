@@ -1,0 +1,136 @@
+{% extends "_layout.html" %}
+
+{% block title %}{{ lang.settings }}{% endblock %}
+
+{% block content %}
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center gap-4">
+        <button id="menuBtn" class="text-gray-800 dark:text-gray-100 text-2xl font-bold md:hidden">☰</button>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ lang.settings }}</h1>
+    </div>
+    <button id="darkModeBtn" class="px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-800 dark:text-gray-100">🌙</button>
+</header>
+
+<section class="space-y-6 max-w-2xl mx-auto">
+    <div id="message-box" class="hidden p-4 rounded-xl text-center font-medium transition-all duration-300"></div>
+
+    <div class="card bg-white dark:bg-gray-800 p-6">
+        <h3 class="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-100">{{ lang.account_preferences }}</h3>
+        <form id="settings-form" class="space-y-6">
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ lang.username }}</label>
+                <input type="text" id="username" name="username" required class="mt-1 w-full p-3 rounded-md border-gray-300 shadow-sm focus:ring-teal-400 focus:border-teal-400 bg-white dark:bg-gray-700">
+            </div>
+            
+            <div>
+                <label for="pushbullet-token" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Pushbullet Token</label>
+                <input type="password" id="pushbullet-token" name="pushbullet-token" class="mt-1 w-full p-3 rounded-md border-gray-300 shadow-sm focus:ring-teal-400 focus:border-teal-400 bg-white dark:bg-gray-700" placeholder="Optional: To receive crisis alerts">
+            </div>
+
+            <div class="flex items-center justify-between">
+                <span class="flex-grow flex flex-col">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Daily Reminder</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Enable daily check-in reminders (requires Pushbullet).</span>
+                </span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="daily-reminder" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                </label>
+            </div>
+
+            <div>
+                <button type="submit" class="w-full flex justify-center py-2 px-4 border rounded-lg shadow-sm font-medium text-white bg-teal-600 hover:bg-teal-700">{{ lang.save_changes }}</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card bg-white dark:bg-gray-800 p-6">
+        <h3 class="text-xl font-semibold mb-6 text-red-600 dark:text-red-400">{{ lang.delete_account }}</h3>
+        <p class="mt-2 mb-4 text-sm text-gray-500 dark:text-gray-400">{{ lang.delete_account_confirm }}</p>
+        <button id="delete-account-button" class="w-full flex justify-center py-2 px-4 border rounded-lg shadow-sm font-medium text-white bg-red-600 hover:bg-red-700">
+            {{ lang.delete_account }}
+        </button>
+    </div>
+</section>
+{% endblock %}
+
+
+{% block page_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const settingsForm = document.getElementById('settings-form');
+        const usernameInput = document.getElementById('username');
+        const dailyReminderInput = document.getElementById('daily-reminder');
+        const pushbulletTokenInput = document.getElementById('pushbullet-token');
+        const deleteButton = document.getElementById('delete-account-button');
+        const messageBox = document.getElementById('message-box');
+        
+        function showMessage(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'dark:bg-red-900', 'dark:text-red-300', 'dark:bg-green-900', 'dark:text-green-300');
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-700', 'dark:bg-green-900', 'dark:text-green-300');
+            } else {
+                messageBox.classList.add('bg-red-100', 'text-red-700', 'dark:bg-red-900', 'dark:text-red-300');
+            }
+            setTimeout(() => { messageBox.classList.add('hidden'); }, 3000);
+        }
+
+        async function fetchSettings() {
+            try {
+                const response = await fetch('/api/get_settings');
+                if (!response.ok) throw new Error(await response.json().message);
+                const data = await response.json();
+                usernameInput.value = data.username || '';
+                dailyReminderInput.checked = data.daily_reminder || false;
+                pushbulletTokenInput.value = data.push_token || '';
+            } catch (error) {
+                showMessage('Failed to load settings. Please try again.', 'error');
+            }
+        }
+
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newSettings = {
+                username: usernameInput.value,
+                dailyReminder: dailyReminderInput.checked,
+                pushToken: pushbulletTokenInput.value
+            };
+            try {
+                const response = await fetch('/api/update_settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newSettings)
+                });
+                const result = await response.json();
+                if (result.ok) {
+                    showMessage('Settings updated successfully!');
+                } else {
+                    showMessage(result.message || 'Failed to update settings.', 'error');
+                }
+            } catch (error) {
+                showMessage('Failed to update settings.', 'error');
+            }
+        });
+
+        deleteButton.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to permanently delete your account? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/delete_account', { method: 'POST' });
+                    const result = await response.json();
+                    if (result.ok) {
+                        alert('Account deleted successfully.');
+                        window.location.href = '/login';
+                    } else {
+                        showMessage(result.message || 'Failed to delete account.', 'error');
+                    }
+                } catch (error) {
+                    showMessage('Failed to delete account.', 'error');
+                }
+            }
+        });
+
+        fetchSettings();
+    });
+</script>
+{% endblock %}

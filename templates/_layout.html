@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahaay AI - {% block title %}{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+    {% block head_scripts %}{% endblock %}
+    <style>
+        .sidebar-link { display: flex; gap: 0.5rem; font-size: 1.125rem; color: #374151; text-decoration: none; transition: all 0.3s; padding: 0.25rem 0.5rem; border-radius: 0.5rem; }
+        .sidebar-link:hover { color: #0284c7; background-color: #bae6fd; }
+        .dark .sidebar-link { color: #d1d5db; }
+        .dark .sidebar-link:hover { color: #a5f3fc; background-color: #1e293b; }
+        .sidebar-active { color: #0284c7 !important; background-color: #bae6fd !important; }
+        .dark .sidebar-active { color: #a5f3fc !important; background-color: #1e293b !important; }
+        .card { transition: all 0.3s; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
+
+<div class="flex min-h-screen">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-xl p-6 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0 z-50">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Sahaay AI</h2>
+        <nav class="space-y-4 flex-1">
+            <a href="{{ url_for('dashboard') }}" class="sidebar-link {% if request.path == url_for('dashboard') %}sidebar-active{% endif %}">🏠 {{ lang.overview }}</a>
+            <a href="{{ url_for('dashboard_mood') }}" class="sidebar-link {% if request.path == url_for('dashboard_mood') %}sidebar-active{% endif %}">📔 {{ lang.mood_journal }}</a>
+            <a href="{{ url_for('dashboard_tools') }}" class="sidebar-link {% if request.path == url_for('dashboard_tools') %}sidebar-active{% endif %}">🧘 {{ lang.coping_tools }}</a>
+            <a href="{{ url_for('dashboard_analytics') }}" class="sidebar-link {% if request.path == url_for('dashboard_analytics') %}sidebar-active{% endif %}">📊 {{ lang.analytics }}</a>
+            <a href="{{ url_for('dashboard_settings') }}" class="sidebar-link {% if request.path == url_for('dashboard_settings') %}sidebar-active{% endif %}">⚙️ {{ lang.settings }}</a>
+        </nav>
+        <div>
+             <a href="{{ url_for('logout') }}" class="sidebar-link text-red-500 hover:bg-red-100 dark:hover:bg-red-900">🚪 Logout</a>
+        </div>
+    </aside>
+
+    <main id="mainContent" class="flex-1 p-8 overflow-y-auto ml-0 md:ml-64 transition-all duration-300">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Standardized Sidebar Toggle Logic
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+        if (menuBtn && sidebar) {
+            menuBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('-translate-x-full');
+            });
+        }
+
+        // Standardized Dark Mode Toggle
+        const darkModeBtn = document.getElementById("darkModeBtn");
+        if (darkModeBtn) {
+            // Set initial state from localStorage
+            if(localStorage.getItem('darkMode') === 'enabled'){
+                document.documentElement.classList.add('dark');
+                darkModeBtn.textContent = "☀️";
+            }
+            // Add click listener
+            darkModeBtn.addEventListener("click", () => {
+                const isDark = document.documentElement.classList.toggle("dark");
+                darkModeBtn.textContent = isDark ? "☀️" : "🌙";
+                localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+            });
+        }
+    });
+</script>
+{% block page_scripts %}{% endblock %}
+</body>
+</html>

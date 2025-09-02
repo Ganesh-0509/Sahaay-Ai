@@ -1,0 +1,20 @@
+User: hi
+Intent: Default Welcome Intent (confidence: 1.00)
+Sahaay-AI: Good day! What can I do for you today?
+
+User: hello
+Intent: Default Welcome Intent (confidence: 1.00)
+Sahaay-AI: Greetings! How can I assist?
+
+User: what
+Intent: Default Fallback Intent (confidence: 1.00)
+Sahaay-AI: I missed what you said. What was that?
+
+User: bye
+Intent: Default Fallback Intent (confidence: 1.00)
+Sahaay-AI: I didn't get that. Can you say it again?
+
+User: good bye
+Intent: Default Fallback Intent (confidence: 1.00)
+Sahaay-AI: Sorry, could you say that again?
+
