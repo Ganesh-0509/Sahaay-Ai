@@ -300,7 +300,7 @@ def login():
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard_home'))
+        return redirect(url_for('dashboard'))
     if request.method == 'POST':
         email = request.form.get('email')
         name = request.form.get('name')
@@ -311,7 +311,7 @@ def signup():
             new_user = User.create(email, name, password)
             login_user(new_user)
             flash('Account created successfully!', 'success')
-            return redirect(url_for('dashboard_home'))
+            return redirect(url_for('dashboard'))
     return render_template('signup.html')
 
 @app.route('/daily_checkin_prompt')
