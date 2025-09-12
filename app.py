@@ -16,6 +16,7 @@ from transformers import pipeline
 import re
 from google.cloud.firestore_v1 import _helpers
 from collections import Counter
+from textblob import TextBlob
 
 # Load environment variables
 load_dotenv()
@@ -151,12 +152,10 @@ CRISIS_PROMPT = """Analyze the following user message to determine if it indicat
 model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
 crisis_model = genai.GenerativeModel('gemini-1.5-flash')
 
-# --- Sentiment Analysis Pipeline ---
-# This is a pre-trained model for sentiment analysis.
-# The first time you run this, it will download the model (~260MB).
-sentiment_pipeline = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+# --- Sentiment Analysis with TextBlob ---
 
 CRISIS_EXCLUSION_LIST = ["bye", "goodbye", "later", "cya", "ok", "okay"]
+
 def is_crisis_sentence(text: str) -> bool:
     if text.strip().lower() in CRISIS_EXCLUSION_LIST:
         return False
@@ -382,31 +381,22 @@ def chat():
         return jsonify({"ok": False, "message": "No message provided."}), 400
 
     user_id = current_user.id if isinstance(current_user, User) else current_user.get_id()
-    
-    # Check if a chat session history already exists for the user
-    if 'chat_session_history' not in session:
-        # If not, initialize an empty list to store the history
-        session['chat_session_history'] = []
-        
-    # Start a chat session using the history stored in the Flask session
-    chat_session = model.start_chat(history=session['chat_session_history'])
 
     try:
-        # First, use the pre-trained model for sentiment and mood
-        sentiment_result = sentiment_pipeline(message)[0]
-        label = sentiment_result['label']
-        score = sentiment_result['score']
+        # Use TextBlob for sentiment analysis
+        analysis = TextBlob(message)
+        sentiment_score = analysis.sentiment.polarity
         
         mood = "neutral"
-        sentiment_score = 0.0
-        if label == 'POSITIVE':
+        if sentiment_score > 0.1:
             mood = "happy"
-            sentiment_score = score
-        elif label == 'NEGATIVE':
+        elif sentiment_score < -0.1:
             mood = "sad"
-            sentiment_score = -score
-        
-        # Then, use the Gemini model for the conversational response
+        else:
+            mood = "neutral"
+
+        # Now, get the conversational response from the Gemini model
+        chat_session = model.start_chat(history=[])
         chat_response = chat_session.send_message(message)
         response_text = chat_response.text if hasattr(chat_response, 'text') else str(chat_response)
 
@@ -417,10 +407,6 @@ def chat():
             response_json = json.loads(json_string.replace('```json', '').replace('```', ''))
         else:
             response_json = {"response": "I'm sorry, I'm having a little trouble with that. Can you tell me more in a different way?"}
-
-        # Append the new message and response to the chat history
-        session['chat_session_history'].append({"role": "user", "parts": [message]})
-        session['chat_session_history'].append({"role": "model", "parts": [response_json.get("response", "")]})
 
         # Handle crisis detection
         crisis = is_crisis_sentence(message)
