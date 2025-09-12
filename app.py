@@ -12,7 +12,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from pushbullet import Pushbullet
 import google.generativeai as genai
 from google.cloud import firestore
-from transformers import pipeline
 import re
 from google.cloud.firestore_v1 import _helpers
 from collections import Counter
