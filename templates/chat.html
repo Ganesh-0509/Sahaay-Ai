@@ -84,7 +84,7 @@
   </div>
 </div>
 
-<div id="mainContainer" class="flex flex-col h-screen max-w-4xl mx-auto p-4 hidden">
+<div id="mainContainer" class="flex flex-col h-screen max-w-4xl mx-auto p-4">
 
   <header class="flex justify-between items-center mb-6 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
     <h1 id="pageTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="page_title">
@@ -160,393 +160,322 @@
     </button>
 </footer>
 </div>
-
 <script>
-    // ======= DOM REFS =======
-    const chatBox = document.getElementById('chatBox');
-    const input = document.getElementById('message');
-    const sendBtn = document.getElementById('sendBtn');
-    const chatError = document.getElementById('chatError');
-    const crisisBanner = document.getElementById('crisisBanner');
-    
-    const langModal = document.getElementById('langModal');
-    const consentModal = document.getElementById('consentModal');
-    const mainContainer = document.getElementById('mainContainer');
-    const langSelect = document.getElementById('langSelect');
-    const langSubmitBtn = document.getElementById('langSubmit');
-    const consentAgreeBtn = document.getElementById('consentAgree');
-    const consentAnonBtn = document.getElementById('consentAnon');
-    const consentExitBtn = document.getElementById('consentExit');
-    const consentStatusEl = document.getElementById('consent-status');
-    const dashboardLink = document.getElementById('dashboardLink');
-    const resetConsentBtn = document.getElementById('resetConsentBtn');
+  // ======= DOM REFS =======
+  const chatBox = document.getElementById('chatBox');
+  const input = document.getElementById('message');
+  const sendBtn = document.getElementById('sendBtn');
+  const chatError = document.getElementById('chatError');
+  const crisisBanner = document.getElementById('crisisBanner');
+  const langModal = document.getElementById('langModal');
+  const consentModal = document.getElementById('consentModal');
+  const mainContainer = document.getElementById('mainContainer');
+  const langSelect = document.getElementById('langSelect');
+  const langSubmitBtn = document.getElementById('langSubmit');
+  const consentAgreeBtn = document.getElementById('consentAgree');
+  const consentAnonBtn = document.getElementById('consentAnon');
+  const consentExitBtn = document.getElementById('consentExit');
+  const consentStatusEl = document.getElementById('consent-status');
+  const dashboardLink = document.getElementById('dashboardLink');
+  const resetConsentBtn = document.getElementById('resetConsentBtn');
 
-    // NEW: User dropdown refs
-    const userDropdownBtn = document.getElementById('userDropdownBtn');
-    const userDropdownMenu = document.getElementById('userDropdownMenu');
-    const anonymousCheckbox = document.getElementById('anonymousCheckbox');
-    const displayNameSpan = document.getElementById('displayName');
-    const eraseBtn = document.getElementById('eraseBtn'); // Now in the dropdown
+  // User dropdown refs
+  const userDropdownBtn = document.getElementById('userDropdownBtn');
+  const userDropdownMenu = document.getElementById('userDropdownMenu');
+  const anonymousCheckbox = document.getElementById('anonymousCheckbox');
+  const displayNameSpan = document.getElementById('displayName');
+  const eraseBtn = document.getElementById('eraseBtn');
 
-    let currentLang = 'en';
+  let currentLang = 'en';
 
-    // Master function to control screen visibility
-    function showScreen(screenToShow) {
-    // Hide all screens first by adding the 'hidden' class
+  // ======= SCREEN CONTROL =======
+  function showScreen(screen) {
     langModal.classList.add('hidden');
     consentModal.classList.add('hidden');
     mainContainer.classList.add('hidden');
 
-    // Then, show the specific screen requested by removing the 'hidden' class
-    if (screenToShow === 'language') {
-        langModal.classList.remove('hidden');
-    } else if (screenToShow === 'consent') {
-        consentModal.classList.remove('hidden');
-    } else if (screenToShow === 'chat') {
-        mainContainer.classList.remove('hidden');
-        fetchPrompt(); // Automatically fetch prompt for the chat screen
+    if (screen === 'language') langModal.classList.remove('hidden');
+    else if (screen === 'consent') consentModal.classList.remove('hidden');
+    else if (screen === 'chat') {
+      mainContainer.classList.remove('hidden');
+      fetchPrompt();
     }
-}
+  }
 
-    // ======= TRANSLATION & MODAL FUNCTIONS =======
-    async function applyTranslations() {
-      try {
-        const res = await fetch(`/translations?lang=${currentLang}`);
-        const translations = await res.json();
-        
-        document.querySelectorAll('[data-lang]').forEach(el => {
-          const key = el.getAttribute('data-lang');
-          if (translations[key]) {
-            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-              el.placeholder = translations[key];
-            } else if (el.tagName === 'BUTTON') {
-              // Preserve inner icons if they exist
-              el.innerHTML = `<i data-lucide="send"></i> ${translations[key]}`;
-            } else if (el.tagName === 'A') {
-              // Handle dashboard link separately to avoid changing icon
-              if (key === 'dashboard_button') {
-                el.innerHTML = `<i data-lucide="home"></i> ${translations[key]}`;
-              } else if (key === 'delete_data_button') {
-                el.innerHTML = `<i data-lucide="trash-2" class="w-4 h-4"></i> ${translations[key]}`;
-              } else {
-                el.textContent = translations[key];
-              }
-            } else {
-              el.textContent = translations[key];
-            }
+  // ======= TRANSLATIONS =======
+  async function applyTranslations() {
+    try {
+      const res = await fetch(`/translations?lang=${currentLang}`);
+      const translations = await res.json();
+      document.querySelectorAll('[data-lang]').forEach(el => {
+        const key = el.getAttribute('data-lang');
+        if (translations[key]) {
+          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[key];
+          else if (el.tagName === 'BUTTON') {
+            if (key === 'send_button') el.innerHTML = `<i data-lucide="send"></i> ${translations[key]}`;
+            else el.textContent = translations[key];
           }
-        });
-        document.title = translations['chat_title'] || 'Sahaay-AI Daily Check-in';
-        document.documentElement.lang = currentLang;
-        lucide.createIcons();
-      } catch (err) {
-        console.error("Translation fetch error:", err);
-      }
+          else if (el.tagName === 'A') {
+            if (key === 'dashboard_button') el.innerHTML = `<i data-lucide="home"></i> ${translations[key]}`;
+            else if (key === 'delete_data_button') el.innerHTML = `<i data-lucide="trash-2"></i> ${translations[key]}`;
+            else el.textContent = translations[key];
+          } else el.textContent = translations[key];
+        }
+      });
+      document.title = translations['chat_title'] || 'Sahaay-AI Daily Check-in';
+      lucide.createIcons();
+    } catch (err) {
+      console.error("Translation fetch error:", err);
     }
+  }
+
+  // ======= CONSENT =======
+  async function updateConsentStatus() {
+    try {
+      const res = await fetch('/api/consent_status');
+      const data = await res.json();
+      if (data.ok) {
+        consentStatusEl.textContent = data.status;
+        if (data.status !== "Consent Given") showScreen('consent');
+      } else consentStatusEl.textContent = "Error fetching status";
+    } catch (err) {
+      consentStatusEl.textContent = "Error fetching status";
+      console.error(err);
+    }
+  }
+
+  // ======= ANONYMOUS / AUTH =======
+  async function switchToAnonymous() {
+    const res = await fetch('/api/anonymous_login', { method: 'POST' });
+    if (res.ok) {
+      localStorage.setItem('hasConsent', 'false');
+      updateConsentStatus();
+      showToast('Switched to Anonymous Mode');
+      fetchUserDisplayName();
+    }
+  }
+
+  async function switchToAuthenticated() { window.location.reload(); }
+
+  async function fetchUserDisplayName() {
+    try {
+      const res = await fetch('/api/get_user_info');
+      const data = await res.json();
+      displayNameSpan.textContent = data.username || "Guest";
+      anonymousCheckbox.checked = !!data.is_anonymous;
+      dashboardLink.style.display = data.is_anonymous ? 'none' : '';
+      eraseBtn.style.display = data.is_anonymous ? 'none' : '';
+    } catch (err) {
+      console.error(err);
+      displayNameSpan.textContent = "Guest";
+      anonymousCheckbox.checked = true;
+      dashboardLink.style.display = 'none';
+      eraseBtn.style.display = 'none';
+    }
+  }
+
+  // ======= INITIAL STATE =======
+  async function checkInitialState() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const langParam = urlParams.get('lang');
+      const selectedLang = localStorage.getItem('selectedLang') || langParam;
+      const hasConsent = localStorage.getItem('hasConsent');
+
+      if (selectedLang && hasConsent) {
+        currentLang = selectedLang;
+        showScreen('chat');
+        await updateConsentStatus();
+      } else if (selectedLang) {
+        currentLang = selectedLang;
+        showScreen('consent');
+      } else showScreen('language');
+
+      dashboardLink.href = `/dashboard?lang=${currentLang}`;
+      await applyTranslations();
+      await fetchUserDisplayName();
+    } catch (err) {
+      console.error("Error initializing page:", err);
+      showScreen('language'); // fallback
+    }
+  }
+
+  // ======= EVENT LISTENERS =======
+  langSubmitBtn.addEventListener('click', async () => {
+    const selected = langSelect.value;
+    if (!selected) return;
+    currentLang = selected;
+    localStorage.setItem('selectedLang', currentLang);
+    await fetch('/set_language', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ language: currentLang })
+    });
+    await applyTranslations();
+    showScreen('consent');
+  });
+
+  consentAgreeBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/submit_consent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consent: true })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        consentStatusEl.textContent = data.status;
+        consentModal.classList.add('hidden');
+        showScreen('chat');
+      } else showToast('Error saving consent', 'error');
+    } catch { showToast('Error saving consent', 'error'); }
+  });
+
+  consentAnonBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/submit_consent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consent: false })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        consentStatusEl.textContent = data.status;
+        consentModal.classList.add('hidden');
+        showScreen('chat');
+      } else showToast('Error saving consent', 'error');
+    } catch { showToast('Error saving consent', 'error'); }
+  });
+
+  consentExitBtn.addEventListener('click', () => { window.location.href = 'https://www.google.com'; });
+  resetConsentBtn.addEventListener('click', () => {
+    localStorage.removeItem('selectedLang');
+    localStorage.removeItem('hasConsent');
+    window.location.reload();
+  });
+
+  userDropdownBtn.addEventListener('click', () => userDropdownMenu.classList.toggle('hidden'));
+  window.addEventListener('click', e => {
+    if (!userDropdownBtn.contains(e.target) && !userDropdownMenu.contains(e.target)) {
+      userDropdownMenu.classList.add('hidden');
+    }
+  });
+  anonymousCheckbox.addEventListener('change', async () => {
+    if (anonymousCheckbox.checked) await switchToAnonymous();
+    else await switchToAuthenticated();
+  });
+
+  eraseBtn.addEventListener('click', async e => {
+    e.preventDefault();
+    if (!confirm('This will delete all of your stored check-ins. Continue?')) return;
+    try {
+      const res = await fetch('/erase', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const data = await res.json();
+      showToast(data.ok ? `Deleted ${data.deleted || 0} entries.` : `Erase error: ${data.error || 'Unknown'}`, data.ok ? 'success':'error');
+    } catch { showToast('Erase failed. Try again later.', 'error'); }
+  });
+
+  // ======= CHAT HELPERS =======
+  function appendMessage(text, sender, type='dialogflow') {
+    const msgDiv = document.createElement('div');
+    let senderClasses = sender==='user' ? 'bg-teal-600 text-white rounded-br-none self-end ml-auto'
+                        : type==='tip' ? 'bg-yellow-200 text-yellow-900 rounded-bl-none self-start'
+                        : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-none self-start';
+    msgDiv.className = `p-3 rounded-2xl max-w-[70%] shadow-md ${senderClasses}`;
+    msgDiv.textContent = text;
+    if(sender!=='user') msgDiv.setAttribute('aria-live','polite');
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function showTyping() {
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typingIndicator';
+    typingDiv.className = 'flex items-center space-x-1 p-3 text-sm text-gray-500 dark:text-gray-400';
+    typingDiv.innerHTML = `<span></span><span></span><span></span>`;
+    chatBox.appendChild(typingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+  function hideTyping() { const el = document.getElementById('typingIndicator'); if(el) el.remove(); }
+
+  async function fetchPrompt() {
+    try {
+      const res = await fetch(`/daily_checkin_prompt?lang=${currentLang}`);
+      const data = await res.json();
+      if(data.prompt) appendMessage(data.prompt,'bot');
+    } catch(err){ console.error(err); }
+  }
+
+  async function sendMessage(msg) {
+  if (!msg) return;
+  appendMessage(msg, 'user');
+  input.value = '';
+  try {
+    showTyping();
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, lang: currentLang })
+    });
+    const result = await res.json();
     
-    function updateConsentStatus() {
-      const hasConsent = localStorage.getItem('hasConsent') === 'true';
-      if (hasConsent) {
-        consentStatusEl.textContent = 'Active (Data is being saved)';
+    // Check if the request was successful and if the data exists
+    if (result.ok && result.data) {
+      const responseData = result.data;
+      
+      // Check for the crisis_detected flag returned by the backend
+      if (responseData.crisis_detected) {
+        crisisBanner.textContent = "It sounds like you might be going through a tough time. Remember to reach out to a professional or a trusted friend if you need support."; // You might want a different message here
+        crisisBanner.classList.remove('hidden');
+        appendMessage(responseData.response, 'bot');
       } else {
-        consentStatusEl.textContent = 'Anonymous Mode (No data is saved)';
+        crisisBanner.classList.add('hidden');
+        if (responseData.response) {
+          appendMessage(responseData.response, 'bot');
+        }
       }
+    } else {
+      chatError.textContent = result.message || "Failed to send message.";
+      chatError.classList.remove('hidden');
     }
+  } catch (err) {
+    chatError.textContent = "Failed to send message.";
+    chatError.classList.remove('hidden');
+    console.error(err);
+  } finally {
+    hideTyping();
+  }
+}
+  sendBtn.addEventListener('click', () => sendMessage(input.value));
+  input.addEventListener('keypress', e => { if(e.key==='Enter') sendMessage(input.value); });
 
-    // NEW: Function to handle anonymous session on frontend
-    async function switchToAnonymous() {
-      const response = await fetch('/api/anonymous_login', { method: 'POST' });
-      if (response.ok) {
-        localStorage.setItem('hasConsent', 'false');
-        updateConsentStatus();
-        showToast('Switched to Anonymous Mode', 'success');
-        fetchUserDisplayName();
-      }
-    }
-
-    // NEW: Function to handle authenticated session switch
-    async function switchToAuthenticated() {
-      // Reloading the page will force a re-check of the login state and clear the anonymous session.
-      window.location.reload(); 
-    }
-
-    // NEW: Function to fetch user info for display
-    async function fetchUserDisplayName() {
-      try {
-        const res = await fetch('/api/get_user_info');
-        const data = await res.json();
-        if (data.username) {
-          displayNameSpan.textContent = data.username;
-          anonymousCheckbox.checked = data.is_anonymous;
-          if (data.is_anonymous) {
-             dashboardLink.style.display = 'none'; // Hide dashboard link for anonymous users
-             eraseBtn.style.display = 'none'; // Hide erase button for anonymous users
-          } else {
-             dashboardLink.style.display = '';
-             eraseBtn.style.display = '';
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch user info:", err);
-        displayNameSpan.textContent = "Guest";
-        anonymousCheckbox.checked = true;
-      }
-    }
-
-    // Initial state check
-    function checkInitialState() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const langParam = urlParams.get('lang');
-        const selectedLang = localStorage.getItem('selectedLang') || langParam;
-        const hasConsent = localStorage.getItem('hasConsent');
-
-        if (selectedLang && hasConsent) {
-            currentLang = selectedLang;
-            showScreen('chat'); // Show chat if both are set
-            updateConsentStatus();
-        } else if (selectedLang) {
-            currentLang = selectedLang;
-            showScreen('consent'); // Show consent if only language is set
-        } else {
-            showScreen('language'); // Show language if neither is set
-        }
-        dashboardLink.href = `/dashboard?lang=${currentLang}`;
-        applyTranslations();
-        fetchUserDisplayName();
-    }
-
-    // ======= EVENT LISTENERS =======
-    // In your language modal handler
-    langSubmitBtn.addEventListener('click', async () => {
-        const selectedValue = langSelect.value;
-        if (selectedValue) {
-            currentLang = selectedValue;
-            localStorage.setItem('selectedLang', currentLang);
-
-            // Send a request to the backend to set the session language
-            await fetch('/set_language', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ language: currentLang })
-            });
-            
-            applyTranslations();
-            showScreen('consent');
-        }
-    });
-
-    consentAgreeBtn.addEventListener('click', () => {
-        localStorage.setItem('hasConsent', 'true');
-        updateConsentStatus();
-        showScreen('chat'); // Move to main chat screen
-    });
-    
-    consentAnonBtn.addEventListener('click', () => {
-        localStorage.setItem('hasConsent', 'false');
-        updateConsentStatus();
-        showScreen('chat'); // Move to main chat screen
-    });
-
-    consentExitBtn.addEventListener('click', () => {
-        window.location.href = 'https://www.google.com'; // or any other exit URL
-    });
-    resetConsentBtn.addEventListener('click', () => {
-        localStorage.removeItem('selectedLang');
-        localStorage.removeItem('hasConsent');
-        window.location.reload();
-    });
-
-    // NEW: Dropdown and anonymous mode toggle handlers
-    userDropdownBtn.addEventListener('click', () => {
-        userDropdownMenu.classList.toggle('hidden');
-    });
-
-    window.addEventListener('click', (e) => {
-        if (!userDropdownBtn.contains(e.target) && !userDropdownMenu.contains(e.target)) {
-            userDropdownMenu.classList.add('hidden');
-        }
-    });
-
-    anonymousCheckbox.addEventListener('change', async () => {
-        if (anonymousCheckbox.checked) {
-            await switchToAnonymous();
-        } else {
-            await switchToAuthenticated();
-        }
-    });
-
-    // ======= CHAT UI HELPERS =======
-    function appendMessage(text, sender, type = 'dialogflow') {
-        const msgDiv = document.createElement('div');
-        let senderClasses = '';
-
-        if (sender === 'user') {
-            senderClasses = 'bg-teal-600 text-white rounded-br-none self-end ml-auto';
-        } else if (type === 'tip') {
-            senderClasses = 'bg-yellow-200 text-yellow-900 rounded-bl-none self-start';
-        } else {
-            senderClasses = 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-none self-start';
-        }
-
-        msgDiv.className = `p-3 rounded-2xl max-w-[70%] shadow-md ${senderClasses}`;
-        msgDiv.textContent = text;
-
-        if (sender !== 'user') msgDiv.setAttribute('aria-live', 'polite');
-        chatBox.appendChild(msgDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function showTyping() {
-        const typingDiv = document.createElement('div');
-        typingDiv.id = 'typingIndicator';
-        typingDiv.className = 'flex items-center space-x-1 p-3 text-sm text-gray-500 dark:text-gray-400';
-        typingDiv.innerHTML = `<span></span><span></span><span></span>`;
-        chatBox.appendChild(typingDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    function hideTyping() {
-        const el = document.getElementById('typingIndicator');
-        if (el) el.remove();
-    }
-
-    // ======= Daily prompt fetch =======
-    async function fetchPrompt() {
-        try {
-            const res = await fetch(`/daily_checkin_prompt?lang=${currentLang}`);
-            const data = await res.json();
-            if (data.prompt) {
-                appendMessage(data.prompt, 'bot');
-            }
-        } catch (err) {
-            console.error("Daily check-in error:", err);
-        }
-    }
-
-    // ======= SEND MESSAGE (main flow) =======
-    async function sendMessage(msg, isUser = true) {
-        if (!msg) return;
-        if (isUser) {
-            appendMessage(msg, 'user');
-            input.value = '';
-        }
-
-        try {
-            showTyping();
-
-            const res = await fetch('/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: msg, lang: currentLang })
-            });
-
-            const data = await res.json();
-
-            if (data.intent === "CRISIS_DETECTED") {
-                crisisBanner.textContent = data.response;
-                crisisBanner.classList.remove('hidden');
-                appendMessage(data.response, 'bot');
-            } else {
-                crisisBanner.classList.add('hidden');
-                if (data.response) {
-                    appendMessage(data.response, 'bot');
-                }
-            }
-
-        } catch (err) {
-            chatError.textContent = "Failed to send message.";
-            chatError.classList.remove('hidden');
-            console.error('sendMessage error', err);
-        } finally {
-            hideTyping();
-        }
-    }
-
-    sendBtn.addEventListener('click', () => sendMessage(input.value));
-    input.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(input.value); });
-
-    // ======= ERASE (now in dropdown) =======
-    eraseBtn.addEventListener('click', async (e) => {
-        e.preventDefault(); // Prevent default link behavior
-        if (!confirm('This will delete all of your stored check-ins. Continue?')) return;
-        try {
-            const res = await fetch('/erase', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const data = await res.json();
-            if (data.ok) showToast(`Deleted ${data.deleted || 0} entries.`);
-            else showToast(`Erase error: ${data.error || 'Unknown'}`, 'error');
-        } catch (e) {
-            showToast('Erase failed. Try again later.', 'error');
-        }
-    });
-
-    function checkInitialState() {
-        fetch('/api/get_user_info')
-            .then(response => response.json())
-            .then(data => {
-                const displayNameSpan = document.getElementById('displayName');
-                const anonymousCheckbox = document.getElementById('anonymousCheckbox');
-                
-                // Update the display name
-                displayNameSpan.textContent = data.username;
-                
-                // Set the anonymous checkbox state
-                if (data.is_anonymous) {
-                    anonymousCheckbox.checked = true;
-                    // You may also want to disable other features for anonymous mode here
-                } else {
-                    anonymousCheckbox.checked = false;
-                }
-            })
-            .catch(error => console.error('Error fetching user info:', error));
-    }
-
-    // Call this function on page load
-    document.addEventListener("DOMContentLoaded", () => {
-        // ... existing calls
-        checkInitialState(); // Add this line
-    });
-
-    // ======= DARK MODE FIX =======
-    const themeToggleBtn = document.getElementById('themeToggleBtn');
-    const themeIcon = themeToggleBtn.querySelector('i');
-
-    function updateThemeIconAndBody() {
-        if (localStorage.getItem('darkMode') === 'enabled') {
-            document.documentElement.classList.add('dark');
-            themeIcon.setAttribute('data-lucide', 'sun');
-        } else {
-            document.documentElement.classList.remove('dark');
-            themeIcon.setAttribute('data-lucide', 'moon');
-        }
-        lucide.createIcons();
-    }
-
-    themeToggleBtn.addEventListener('click', () => {
-        const isDark = document.documentElement.classList.toggle('dark');
-        localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
-        updateThemeIconAndBody();
-    });
-
-    // Initial setup on page load
-    document.addEventListener("DOMContentLoaded", () => {
-        updateThemeIconAndBody();
-        checkInitialState();
-    });
-
-    // Activate icons
+  // ======= DARK MODE =======
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeIcon = themeToggleBtn.querySelector('i');
+  function updateTheme() {
+    const dark = localStorage.getItem('darkMode')==='enabled';
+    document.documentElement.classList.toggle('dark', dark);
+    themeIcon.setAttribute('data-lucide', dark?'sun':'moon');
     lucide.createIcons();
+  }
+  themeToggleBtn.addEventListener('click', () => {
+    const dark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('darkMode', dark?'enabled':'disabled');
+    updateTheme();
+  });
 
-    // Placeholder toast function
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.style.backgroundColor = type === 'success' ? '#10B981' : '#EF4444';
-      toast.classList.remove('hidden');
-      setTimeout(() => toast.classList.add('hidden'), 3000);
-    }
+  // ======= TOAST =======
+  function showToast(msg,type='success') {
+    const toast = document.getElementById('toast');
+    toast.textContent=msg;
+    toast.style.backgroundColor=type==='success'?'#10B981':'#EF4444';
+    toast.classList.remove('hidden');
+    setTimeout(()=>toast.classList.add('hidden'),3000);
+  }
+
+  // ======= INITIALIZE PAGE =======
+  document.addEventListener("DOMContentLoaded", async () => {
+    updateTheme();
+    await checkInitialState();
+  });
+
 </script>
 </body>
 </html>

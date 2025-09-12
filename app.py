@@ -130,27 +130,20 @@ TRANSLATIONS = {
 }
 
 # --- NLP and Crisis Detection ---
-SYSTEM_PROMPT = """You are Sahaay-AI, a kind and supportive companion for Indian youth. You're here to listen, understand, and chat about whatever is on their mind—both the good and the bad.
+SYSTEM_PROMPT = """You are Sahaay-AI, a kind, happy, and supportive mental health companion for Indian youth. Your primary role is to be a welcoming and non-judgmental friend. You are here to listen, understand, and share in their feelings, both the good and the bad. Your friendly and empathetic tone should always shine through.
 
-Your goal is to be a welcoming and non-judgmental friend.
+**INSTRUCTION: Your entire response must be a single JSON object. Do not include any text, conversation, or markdown before or after the JSON. Do not include any explanation.**
 
-Your response must be formatted as a JSON object with four keys:
-- **mood**: A single word from this list: happy, calm, neutral, stressed, anxious, sad, angry, tired, overwhelmed, lonely.
-- **intent**: A single word from this list: sharing_a_win, seeking_advice, venting_frustrations, expressing_gratitude, casual_chat, asking_question.
-- **sentiment**: A float number between -1.0 (very negative) to 1.0 (very positive).
+The JSON object must have one key:
 - **response**: Your brief, empathetic, and conversational reply to the user.
 
 Example:
 User: I had a great day today!
 Your Response:
 {
-  "mood": "happy",
-  "intent": "sharing_a_win",
-  "sentiment": 0.8,
-  "response": "That's awesome! What made your day so good?"
+  "response": "Oh, that's fantastic! Tell me all about it—what made your day so great?"
 }
 
-Do not include any text before or after the JSON object.
 """
 CRISIS_PROMPT = """Analyze the following user message to determine if it indicates a crisis, such as self-harm, suicidal thoughts, or severe distress. Respond with a single word: "CRISIS" if it is, or "NO_CRISIS" if it is not. User text: "{text}"
 """
@@ -158,7 +151,15 @@ CRISIS_PROMPT = """Analyze the following user message to determine if it indicat
 model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_PROMPT)
 crisis_model = genai.GenerativeModel('gemini-1.5-flash')
 
+# --- Sentiment Analysis Pipeline ---
+# This is a pre-trained model for sentiment analysis.
+# The first time you run this, it will download the model (~260MB).
+sentiment_pipeline = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
+
+CRISIS_EXCLUSION_LIST = ["bye", "goodbye", "later", "cya", "ok", "okay"]
 def is_crisis_sentence(text: str) -> bool:
+    if text.strip().lower() in CRISIS_EXCLUSION_LIST:
+        return False
     try:
         response = crisis_model.generate_content(CRISIS_PROMPT.format(text=text))
         result = response.text.strip().upper()
@@ -217,8 +218,6 @@ def calculate_streak(timestamps):
     return streak
 
 def generate_coping_tip(mood_text):
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = (f"Analyze the following text describing a mood. Provide the single dominant emotion (e.g., 'anxiety', 'sadness', 'joy'). "
               f"Then, suggest a specific, actionable coping tip for that emotion. "
               f"Use the format: Emotion: <emotion>\\nSentiment: <positive/negative/neutral>\\nTip: <tip>. Text: \"{mood_text}\"")
@@ -279,6 +278,11 @@ def dashboard():
     # Pass the 'lang' variable to the template
     return render_template('home.html', lang=lang)
 
+@app.route("/chat")
+@login_required
+def chat_page():
+    return render_template('chat.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -326,6 +330,36 @@ def daily_checkin_prompt():
     prompt_text = prompts.get(lang, prompts['en'])
     return jsonify({"prompt": prompt_text})
 
+@app.route('/api/consent_status')
+@login_required
+def consent_status():
+    try:
+        user_doc = users_ref.document(current_user.id).get()
+        if not user_doc.exists:
+            return jsonify({"ok": False, "status": "Unknown"}), 404
+        data = user_doc.to_dict()
+        # Change according to your consent logic
+        if data.get("consent") == True:
+            status = "Consent Given"
+        else:
+            status = "Anonymous / Not Given"
+        return jsonify({"ok": True, "status": status})
+    except Exception as e:
+        return jsonify({"ok": False, "status": "Error"}), 500
+
+@app.route('/api/submit_consent', methods=['POST'])
+def submit_consent():
+    data = request.get_json()
+    consent = data.get('consent')
+
+    if consent is None:
+        return jsonify({"ok": False, "error": "Missing consent value"}), 400
+
+    # Save consent to session or DB
+    session['has_consent'] = consent  # example using session
+    status_text = "Consent Given" if consent else "Anonymous Mode (No data is saved)"
+    return jsonify({"ok": True, "status": status_text})
+
 # New route to get user info for the frontend
 @app.route('/api/get_user_info', methods=['GET'])
 def get_user_info():
@@ -336,11 +370,84 @@ def get_user_info():
             return jsonify({"username": "Anonymous", "is_anonymous": True})
     return jsonify({"username": "Guest", "is_anonymous": False})
 
-@app.route("/chat", methods=["GET"])
+# --- Chat API ---
+@app.route("/chat", methods=["POST"])
 @login_required
-def show_chat_page():
-    return render_template("chat.html")
+def chat():
+    data = request.get_json()
+    message = data.get("message")
+    lang = data.get("lang", "en")
 
+    if not message:
+        return jsonify({"ok": False, "message": "No message provided."}), 400
+
+    user_id = current_user.id if isinstance(current_user, User) else current_user.get_id()
+    
+    # Check if a chat session history already exists for the user
+    if 'chat_session_history' not in session:
+        # If not, initialize an empty list to store the history
+        session['chat_session_history'] = []
+        
+    # Start a chat session using the history stored in the Flask session
+    chat_session = model.start_chat(history=session['chat_session_history'])
+
+    try:
+        # First, use the pre-trained model for sentiment and mood
+        sentiment_result = sentiment_pipeline(message)[0]
+        label = sentiment_result['label']
+        score = sentiment_result['score']
+        
+        mood = "neutral"
+        sentiment_score = 0.0
+        if label == 'POSITIVE':
+            mood = "happy"
+            sentiment_score = score
+        elif label == 'NEGATIVE':
+            mood = "sad"
+            sentiment_score = -score
+        
+        # Then, use the Gemini model for the conversational response
+        chat_response = chat_session.send_message(message)
+        response_text = chat_response.text if hasattr(chat_response, 'text') else str(chat_response)
+
+        # Extract the JSON response from the model's output
+        match = re.search(r'\{.*\}', response_text.strip(), re.DOTALL)
+        if match:
+            json_string = match.group(0)
+            response_json = json.loads(json_string.replace('```json', '').replace('```', ''))
+        else:
+            response_json = {"response": "I'm sorry, I'm having a little trouble with that. Can you tell me more in a different way?"}
+
+        # Append the new message and response to the chat history
+        session['chat_session_history'].append({"role": "user", "parts": [message]})
+        session['chat_session_history'].append({"role": "model", "parts": [response_json.get("response", "")]})
+
+        # Handle crisis detection
+        crisis = is_crisis_sentence(message)
+        
+        if db:
+            save_checkin(
+                user_id=user_id,
+                mood=mood,
+                language=lang,
+                text=message,
+                intent="casual_chat",
+                sentiment=sentiment_score
+            )
+
+        final_response = {
+            "mood": mood,
+            "intent": "casual_chat",
+            "sentiment": sentiment_score,
+            "response": response_json.get("response", "I'm here to listen. Can you tell me more?")
+        }
+        final_response["crisis_detected"] = crisis
+        return jsonify({"ok": True, "data": final_response})
+
+    except Exception as e:
+        print("Chat error:", e)
+        return jsonify({"ok": False, "message": f"Error generating response: {e}"}), 500
+    
 # Logout route
 @app.route('/logout')
 @login_required
@@ -520,46 +627,6 @@ def mark_helpful():
         print("Mark helpful failed:", e)
         return jsonify({"ok": False, "error": "Failed to mark tip as helpful"}), 500
 
-@app.route('/api/generate_response', methods=['POST'])
-def generate_response():
-    data = request.get_json()
-    message = data.get('message')
-    if not message:
-        return jsonify({"ok": False, "message": "No message provided."}), 400
-
-    # User identification logic
-    if current_user.is_authenticated:
-        if isinstance(current_user, User):
-            user_id = current_user.id
-            is_anonymous = False
-        else: # AnonymousUser
-            user_id = current_user.get_id()
-            is_anonymous = True
-    else:
-        return jsonify({"ok": False, "message": "Not authenticated."}), 401
-
-    # Your existing Gemini API and chat logic
-    try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        chat_session = model.start_chat(history=[])
-        response = chat_session.send_message(message)
-        response_text = response.text
-
-        # Optionally save the chat message (to a temporary collection for anonymous users)
-        chat_ref = db.collection('chats')
-        chat_ref.add({
-            'user_id': user_id,
-            'message': message,
-            'response': response_text,
-            'timestamp': datetime.now(timezone.utc),
-            'is_anonymous': is_anonymous
-        })
-
-        return jsonify({"ok": True, "response": response_text})
-    except Exception as e:
-        return jsonify({"ok": False, "message": f"Error generating response: {e}"}), 500
-
 # Settings routes (still require a real login)
 @app.route('/api/get_settings', methods=['GET'])
 @login_required
@@ -618,4 +685,5 @@ def get_translations():
     return jsonify(TRANSLATIONS.get(lang, TRANSLATIONS['en']))
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(debug=True, host="0.0.0.0", port=port)
