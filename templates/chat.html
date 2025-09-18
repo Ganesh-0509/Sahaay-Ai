@@ -16,30 +16,52 @@
     display: inline-block;
     width: 8px;
     height: 8px;
-    margin-left: 2px;
+    margin-left: 4px;
     border-radius: 50%;
     background-color: #a1a1aa;
-    animation: bounce 1.4s infinite ease-in-out both;
+    animation: bounce 1.2s infinite ease-in-out both;
   }
-  .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-  .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+  .typing-indicator span:nth-child(1) { animation-delay: -0.24s; }
+  .typing-indicator span:nth-child(2) { animation-delay: -0.12s; }
   @keyframes bounce {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1.0); }
   }
 
-  /*
-  The 'hidden' class is a Tailwind CSS utility.
-  It's already included by default, so we don't need to define it here.
-  */
+  /* Fade-in for messages */
+  .msg-fade { animation: msgAppear .28s ease-out both; }
+  @keyframes msgAppear { from { transform: translateY(6px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+
+  /* Avatars */
+  .avatar { width: 34px; height: 34px; border-radius: 999px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+
+  /* Mood card */
+  .mood-card { border-radius: 12px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); max-width:78%; }
+  .mood-card .tip { white-space: pre-wrap; }
+
+  /* Spinner over Send button */
+  .send-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,0.6); border-top-color:rgba(255,255,255,1); border-radius:50%; animation:spin 1s linear infinite; display:inline-block; vertical-align:middle; margin-left:8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Emoji quick row */
+  .emoji-row button { font-size:20px; }
+
+  /* Toast */
+  .toast { display:none; align-items:center; gap:0.5rem; }
+  .toast.show { display:flex; }
 </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100">
 
-<div id="toast" class="toast fixed bottom-8 right-8 z-[1000] min-w-[250px] p-4 rounded-xl shadow-lg text-white font-medium" role="alert" aria-live="assertive"></div>
+<div id="toast" class="toast fixed bottom-8 right-8 z-[1000] min-w-[250px] p-4 rounded-xl shadow-lg text-white font-medium" role="alert" aria-live="polite"></div>
 
 <div id="crisisBanner" class="hidden bg-red-600 dark:bg-red-700 text-white px-4 py-2 text-center font-semibold animate-pulse" role="alert" aria-live="assertive" data-lang="crisis_banner">
-  ⚠️ Crisis detected! Please seek help immediately.
+  <div class="flex items-center justify-center gap-4">
+    <div>⚠️ It sounds like you might be going through a tough time.</div>
+    <div class="flex gap-2">
+      <a id="helpResourcesBtn" href="/resources" target="_blank" class="bg-white text-red-700 px-3 py-1 rounded-lg font-semibold">Get help & resources</a>
+    </div>
+  </div>
 </div>
 
 <div id="consentModal" role="dialog" aria-labelledby="consentTitle" aria-describedby="consentDesc" tabindex="0"
@@ -68,7 +90,7 @@
   </div>
 </div>
 
-<div id="langModal" role="dialog" aria-labelledby="langTitle" aria-describedby="langDesc" tabindex="0"
+<!-- <div id="langModal" role="dialog" aria-labelledby="langTitle" aria-describedby="langDesc" tabindex="0"
      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden">
   <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-80 flex flex-col gap-4">
     <h2 id="langTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="lang_title">Select Your Language</h2>
@@ -82,21 +104,21 @@
     </select>
     <button id="langSubmit" class="bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" tabindex="0" data-lang="lang_submit_button">Continue</button>
   </div>
-</div>
+</div> -->
 
-<div id="mainContainer" class="flex flex-col h-screen max-w-4xl mx-auto p-4">
+<div id="mainContainer" class="flex flex-col h-screen max-w-4xl mx-auto p-4 hidden">
 
   <header class="flex justify-between items-center mb-6 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
     <h1 id="pageTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="page_title">
       Daily Check-in
     </h1>
     <div class="flex items-center gap-3">
-      <a href="/dashboard" id="dashboardLink" class="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-500 transition-smooth" data-lang="dashboard_button">
+      <a href="/dashboard" id="dashboardLink" class="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-500 transition-smooth" data-lang="dashboard_button" aria-label="Open Dashboard">
         <i data-lucide="home"></i> Dashboard
       </a>
 
       <div class="relative inline-block text-left">
-          <button id="userDropdownBtn" class="flex items-center justify-center w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-smooth" aria-haspopup="true" aria-expanded="true">
+          <button id="userDropdownBtn" class="flex items-center justify-center w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-smooth" aria-haspopup="true" aria-expanded="true" aria-label="User menu">
               <i data-lucide="user"></i>
           </button>
           <div id="userDropdownMenu" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition-smooth hidden z-20" role="menu" aria-orientation="vertical" aria-labelledby="userDropdownBtn">
@@ -110,23 +132,23 @@
                           <span>Anonymous Mode</span>
                           <label class="flex items-center cursor-pointer">
                               <div class="relative">
-                                  <input type="checkbox" id="anonymousCheckbox" class="sr-only">
+                                  <input type="checkbox" id="anonymousCheckbox" class="sr-only" aria-label="Enable anonymous mode">
                                   <div class="block bg-gray-600 dark:bg-gray-400 w-10 h-6 rounded-full"></div>
                                   <div class="dot absolute left-1 top-1 bg-white dark:bg-gray-800 w-4 h-4 rounded-full transition-all duration-300"></div>
                               </div>
                           </label>
                       </div>
                   </div>
-                  <a href="#" id="eraseBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500 hover:text-white rounded-md transition-smooth" data-lang="delete_data_button" role="menuitem">
+                  <a href="#" id="eraseBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500 hover:text-white rounded-md transition-smooth" data-lang="delete_data_button" role="menuitem" aria-label="Delete all data">
                       <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Data
                   </a>
-                  <a href="/logout" id="logoutBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-smooth" role="menuitem">
+                  <a href="/logout" id="logoutBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-smooth" role="menuitem" aria-label="Logout">
                       <i data-lucide="log-out" class="w-4 h-4"></i> Logout
                   </a>
               </div>
           </div>
       </div>
-      <button id="themeToggleBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg transition-smooth bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600">
+      <button id="themeToggleBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg transition-smooth bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600" aria-label="Toggle theme">
         <i data-lucide="moon"></i>
       </button>
     </div>
@@ -139,18 +161,31 @@
 
   <div class="flex flex-col flex-1 bg-white dark:bg-gray-800 rounded-2xl shadow overflow-hidden">
     <div id="chatBox" class="flex-1 flex flex-col gap-3 p-4 overflow-y-auto chat-box" role="log" aria-live="polite"></div>
+
+    <!-- Emoji quick row -->
+    <div class="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+      <div class="emoji-row flex gap-2 items-center">
+        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add happy emoji">😀</button>
+        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add sad emoji">😢</button>
+        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add anxious emoji">😰</button>
+        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add calm emoji">😌</button>
+        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add heart emoji">❤️</button>
+      </div>
+    </div>
+
     <div class="flex gap-2 items-center p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
       <input id="message" type="text" placeholder="Type your message..." data-lang="input_placeholder"
-             class="flex-1 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100">
-      <button id="sendBtn" class="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" data-lang="send_button">
-        <i data-lucide="send"></i> Send
+             class="flex-1 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100" aria-label="Type your message">
+      <button id="sendBtn" class="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" data-lang="send_button" aria-label="Send message">
+        <i data-lucide="send"></i> <span id="sendText">Send</span>
+        <span id="sendSpinner" class="hidden" aria-hidden="true"><span class="send-spinner" /></span>
       </button>
     </div>
   </div>
 
-  <p id="chatError" class="text-red-500 mt-2 hidden" data-lang="chat_error"></p>
+  <p id="chatError" class="text-red-500 mt-2 hidden" data-lang="chat_error" role="status"></p>
   
-<footer class="text-center text-xs text-gray-500 mt-4">
+  <footer class="text-center text-xs text-gray-500 mt-4">
     <p data-lang="privacy_policy_link">
         <a href="/privacy" class="underline">Privacy & Data Policy</a>
     </p>
@@ -158,26 +193,28 @@
             class="mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600" data-lang="reset_consent_button">
         Reset Consent
     </button>
-</footer>
+  </footer>
 </div>
+
 <script>
   // ======= DOM REFS =======
   const chatBox = document.getElementById('chatBox');
   const input = document.getElementById('message');
   const sendBtn = document.getElementById('sendBtn');
+  const sendSpinner = document.getElementById('sendSpinner');
+  const sendText = document.getElementById('sendText');
   const chatError = document.getElementById('chatError');
   const crisisBanner = document.getElementById('crisisBanner');
-  const langModal = document.getElementById('langModal');
   const consentModal = document.getElementById('consentModal');
   const mainContainer = document.getElementById('mainContainer');
-  const langSelect = document.getElementById('langSelect');
-  const langSubmitBtn = document.getElementById('langSubmit');
   const consentAgreeBtn = document.getElementById('consentAgree');
   const consentAnonBtn = document.getElementById('consentAnon');
   const consentExitBtn = document.getElementById('consentExit');
   const consentStatusEl = document.getElementById('consent-status');
   const dashboardLink = document.getElementById('dashboardLink');
   const resetConsentBtn = document.getElementById('resetConsentBtn');
+  const emojiButtons = document.querySelectorAll('.emoji-row button');
+  const helpResourcesBtn = document.getElementById('helpResourcesBtn');
 
   // User dropdown refs
   const userDropdownBtn = document.getElementById('userDropdownBtn');
@@ -186,23 +223,190 @@
   const displayNameSpan = document.getElementById('displayName');
   const eraseBtn = document.getElementById('eraseBtn');
 
-  let currentLang = 'en';
+  let currentLang = 'en';   // ✅ always default to English
+  let typingIndicatorId = null;
+  let slowSpinnerTimer = null;
 
-  // ======= SCREEN CONTROL =======
-  function showScreen(screen) {
-    langModal.classList.add('hidden');
-    consentModal.classList.add('hidden');
-    mainContainer.classList.add('hidden');
-
-    if (screen === 'language') langModal.classList.remove('hidden');
-    else if (screen === 'consent') consentModal.classList.remove('hidden');
-    else if (screen === 'chat') {
-      mainContainer.classList.remove('hidden');
-      fetchPrompt();
-    }
+  // ======= UTILITIES: local history =======
+  function saveMessageToLocal(obj) {
+    try {
+      const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+      history.push(obj);
+      if (history.length > 50) history.splice(0, history.length - 50);
+      localStorage.setItem('chat_history', JSON.stringify(history));
+    } catch (e) { console.error('saveHistory err', e); }
+  }
+  function restoreChatHistory() {
+    try {
+      const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+      if (!history.length) return;
+      history.forEach(m => appendMessage(m.text, m.sender, m.type || 'text', false));
+      // scroll to bottom
+      chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (e) { console.error('restoreHistory err', e); }
   }
 
-  // ======= TRANSLATIONS =======
+  // ======= MESSAGE RENDERING HELPERS =======
+  function createMoodCard(emotion, sentiment, tipText) {
+    const card = document.createElement('div');
+    card.className = 'mood-card bg-yellow-50 dark:bg-yellow-900 mood-card msg-fade';
+    // emoji mapping
+    const map = { sad: '☹️', happiness: '😄', happy: '😄', anxious: '😰', calm: '😌', neutral:'😐', anger:'😡' };
+    const emoKey = (emotion||'').toLowerCase();
+    const emoji = map[emoKey] || (emotion ? '🧠' : '');
+    card.innerHTML = `
+      <div class="flex items-center justify-between gap-3 mb-2">
+        <div class="flex items-center gap-3">
+          <div class="avatar bg-white dark:bg-gray-800">${emoji}</div>
+          <div>
+            <div class="font-semibold text-sm">${emotion ? emotion : 'Mood'}</div>
+            <div class="text-xs text-gray-600 dark:text-gray-300">${sentiment ? sentiment : ''}</div>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button class="text-xs px-2 py-1 rounded bg-white dark:bg-gray-800 copy-tip-btn" title="Copy tip">Copy</button>
+        </div>
+      </div>
+      <div class="tip text-sm text-gray-800 dark:text-gray-100">${tipText || ''}</div>
+    `;
+    // copy handler
+    card.querySelector('.copy-tip-btn')?.addEventListener('click', () => {
+      navigator.clipboard?.writeText(tipText || '').then(() => showToast('Tip copied'), () => showToast('Copy failed', 'error'));
+    });
+    return card;
+  }
+
+  function parseAndCreateContent(text) {
+    // If it's already an object (rare), handle it
+    try {
+      // Find JSON substring
+      const jsonMatch = text && text.match ? text.match(/\{[\s\S]*\}/m) : null;
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          // nested response with Tip
+          if (parsed && typeof parsed === 'object') {
+            const resp = parsed.response || parsed;
+            if (typeof resp === 'string') {
+              // string inside response
+              const el = document.createElement('div'); el.textContent = resp; return el;
+            } else if (typeof resp === 'object') {
+              const emotion = resp.Emotion || resp.emotion;
+              const sentiment = resp.Sentiment || resp.sentiment;
+              const tip = resp.Tip || resp.tip || resp.response || JSON.stringify(resp);
+              return createMoodCard(emotion, sentiment, tip);
+            }
+          }
+        } catch(e) { /* not parsable JSON */ }
+      }
+    } catch(e){ console.error(e); }
+
+    // Fallback: detect "Emotion: ... Sentiment: ... Tip: ..." pattern
+    const emo = (text || '').match(/Emotion:\s*(.+?)\s*(?:\n|$)/i);
+    const sent = (text || '').match(/Sentiment:\s*(.+?)\s*(?:\n|$)/i);
+    const tipm = (text || '').match(/Tip:\s*([\s\S]*)/i);
+    if (tipm) {
+      const emotion = emo ? emo[1].trim() : '';
+      const sentiment = sent ? sent[1].trim() : '';
+      const tip = tipm[1].trim();
+      return createMoodCard(emotion, sentiment, tip);
+    }
+
+    // Default: plain text node
+    const p = document.createElement('div');
+    p.textContent = text;
+    return p;
+  }
+
+  function appendMessage(text, sender, type='dialogflow', persist=true) {
+    // sender: 'user' or 'bot'
+    const row = document.createElement('div');
+    row.className = `flex gap-3 items-start ${sender==='user' ? 'justify-end' : 'justify-start'} msg-fade`;
+    row.style.alignItems = 'flex-end';
+
+    // avatar
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'flex items-end';
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.style.userSelect = 'none';
+    avatar.style.fontSize = '16px';
+    if (sender === 'user') {
+      avatar.textContent = '👤';
+    } else {
+      avatar.textContent = '🤖';
+    }
+    // bubble
+    const bubble = document.createElement('div');
+    bubble.className = `${sender==='user' ? 'bg-teal-600 text-white rounded-br-none self-end ml-auto' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-none self-start'} p-3 rounded-2xl max-w-[70%] shadow-md`;
+
+    // If bot message likely contains mood/tip JSON, render mood card
+    if (sender !== 'user') {
+      const contentEl = parseAndCreateContent(text);
+      // if contentEl is mood-card, place it without extra bubble background
+      if (contentEl.classList && contentEl.classList.contains('mood-card')) {
+        // remove default bubble styling and put mood card
+        row.innerHTML = ''; // clear
+        const left = document.createElement('div'); left.className = 'flex items-start gap-3';
+        const av = document.createElement('div'); av.className = 'avatar'; av.textContent = '🤖';
+        left.appendChild(av);
+        left.appendChild(contentEl);
+        row.appendChild(left);
+      } else {
+        bubble.appendChild(contentEl);
+        row.appendChild(avatarWrap);
+        avatarWrap.appendChild(avatar);
+        row.appendChild(bubble);
+      }
+    } else {
+      // user message - plain
+      bubble.textContent = text;
+      row.appendChild(bubble);
+      row.appendChild(avatarWrap);
+      avatarWrap.appendChild(avatar);
+    }
+
+    chatBox.appendChild(row);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // persist
+    if (persist) saveMessageToLocal({ sender, text, type, ts: Date.now() });
+  }
+
+  // ======= Typing indicator + spinner helpers =======
+  function showTyping() {
+    // do not duplicate
+    if (document.getElementById('typingIndicator')) return;
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'typingIndicator';
+    typingDiv.className = 'typing-indicator flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 p-2';
+    typingDiv.innerHTML = `<span>Sahaay is typing</span><span></span><span></span><span></span>`;
+    chatBox.appendChild(typingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+  function hideTyping() {
+    const el = document.getElementById('typingIndicator'); if (el) el.remove();
+  }
+
+  function showSlowSpinner() {
+    sendSpinner.classList.remove('hidden');
+    sendText.style.display = 'none';
+  }
+  function hideSlowSpinner() {
+    sendSpinner.classList.add('hidden');
+    sendText.style.display = '';
+  }
+
+  // ======= Toast =======
+  function showToast(msg, type='success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    toast.style.backgroundColor = type === 'success' ? '#10B981' : '#EF4444';
+    setTimeout(()=>toast.classList.remove('show'), 3000);
+  }
+
+  // ======= TRANSLATIONS (unchanged) =======
   async function applyTranslations() {
     try {
       const res = await fetch(`/translations?lang=${currentLang}`);
@@ -229,34 +433,32 @@
     }
   }
 
-  // ======= CONSENT =======
-  async function updateConsentStatus() {
+  // ======= CONSENT (unchanged) =======
+  document.addEventListener("DOMContentLoaded", async () => {
     try {
-      const res = await fetch('/api/consent_status');
-      const data = await res.json();
-      if (data.ok) {
-        consentStatusEl.textContent = data.status;
-        if (data.status !== "Consent Given") showScreen('consent');
-      } else consentStatusEl.textContent = "Error fetching status";
+        const res = await fetch("/api/consent_status");
+        const data = await res.json();
+
+        if (!data.has_consent && !localStorage.getItem("has_consent")) {
+            // Show modal if not given
+            document.getElementById("consentModal").classList.remove("hidden");
+        }
     } catch (err) {
-      consentStatusEl.textContent = "Error fetching status";
-      console.error(err);
+        console.error("Consent status error:", err);
     }
-  }
 
-  // ======= ANONYMOUS / AUTH =======
-  async function switchToAnonymous() {
-    const res = await fetch('/api/anonymous_login', { method: 'POST' });
-    if (res.ok) {
-      localStorage.setItem('hasConsent', 'false');
-      updateConsentStatus();
-      showToast('Switched to Anonymous Mode');
-      fetchUserDisplayName();
-    }
-  }
+    document.getElementById("consentAgree").addEventListener("click", async () => {
+        try {
+            await fetch("/api/set_consent", { method: "POST" });
+            localStorage.setItem("has_consent", "true");
+            document.getElementById("consentModal").classList.add("hidden");
+        } catch (err) {
+            console.error("Set consent error:", err);
+        }
+    });
+});
 
-  async function switchToAuthenticated() { window.location.reload(); }
-
+  // ======= AUTH / USER (unchanged) =======
   async function fetchUserDisplayName() {
     try {
       const res = await fetch('/api/get_user_info');
@@ -277,57 +479,57 @@
   // ======= INITIAL STATE =======
   async function checkInitialState() {
     try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const langParam = urlParams.get('lang');
-      const selectedLang = localStorage.getItem('selectedLang') || langParam;
       const hasConsent = localStorage.getItem('hasConsent');
 
-      if (selectedLang && hasConsent) {
-        currentLang = selectedLang;
-        showScreen('chat');
-        await updateConsentStatus();
-      } else if (selectedLang) {
-        currentLang = selectedLang;
-        showScreen('consent');
-      } else showScreen('language');
+      if (hasConsent) {
+        mainContainer.classList.remove('hidden');
+      } else {
+        consentModal.classList.remove('hidden');
+      }
 
       dashboardLink.href = `/dashboard?lang=${currentLang}`;
       await applyTranslations();
       await fetchUserDisplayName();
     } catch (err) {
       console.error("Error initializing page:", err);
-      showScreen('language'); // fallback
     }
   }
 
-  // ======= EVENT LISTENERS =======
-  langSubmitBtn.addEventListener('click', async () => {
-    const selected = langSelect.value;
-    if (!selected) return;
-    currentLang = selected;
-    localStorage.setItem('selectedLang', currentLang);
-    await fetch('/set_language', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ language: currentLang })
-    });
-    await applyTranslations();
-    showScreen('consent');
-  });
+  // ======= EVENT LISTENERS (unchanged mostly) =======
+  // document.getElementById('langSubmit')?.addEventListener('click', async () => {
+  //   const selected = langSelect.value;
+  //   if (!selected) return;
+  //   currentLang = selected;
+  //   localStorage.setItem('selectedLang', currentLang);
+  //   await fetch('/set_language', {
+  //     method:'POST', headers:{'Content-Type':'application/json'},
+  //     body: JSON.stringify({ language: currentLang })
+  //   });
+  //   await applyTranslations();
+  //   consentModal.classList.remove('hidden');
+  // });
 
+  // ======= CONSENT =======
   consentAgreeBtn.addEventListener('click', async () => {
-    try {
-      const res = await fetch('/api/submit_consent', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consent: true })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        consentStatusEl.textContent = data.status;
-        consentModal.classList.add('hidden');
-        showScreen('chat');
-      } else showToast('Error saving consent', 'error');
-    } catch { showToast('Error saving consent', 'error'); }
-  });
+  try {
+    const res = await fetch('/api/submit_consent', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consent: true })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      localStorage.setItem('hasConsent', 'true');
+      consentStatusEl.textContent = data.status;
+      consentModal.classList.add('hidden');
+      mainContainer.classList.remove('hidden');
+      await updateConsentStatus();
+
+      // ✅ Trigger initial bot message immediately after first consent
+      await fetchPrompt(); 
+    } else showToast('Error saving consent', 'error');
+  } catch { showToast('Error saving consent', 'error'); }
+});
+
 
   consentAnonBtn.addEventListener('click', async () => {
     try {
@@ -337,16 +539,16 @@
       });
       const data = await res.json();
       if (data.ok) {
+        localStorage.setItem('hasConsent', 'false');
         consentStatusEl.textContent = data.status;
         consentModal.classList.add('hidden');
-        showScreen('chat');
+        mainContainer.classList.remove('hidden');
       } else showToast('Error saving consent', 'error');
     } catch { showToast('Error saving consent', 'error'); }
   });
 
   consentExitBtn.addEventListener('click', () => { window.location.href = 'https://www.google.com'; });
   resetConsentBtn.addEventListener('click', () => {
-    localStorage.removeItem('selectedLang');
     localStorage.removeItem('hasConsent');
     window.location.reload();
   });
@@ -358,8 +560,13 @@
     }
   });
   anonymousCheckbox.addEventListener('change', async () => {
-    if (anonymousCheckbox.checked) await switchToAnonymous();
-    else await switchToAuthenticated();
+    if (anonymousCheckbox.checked) {
+      await fetch('/api/anonymous_login', { method: 'POST' });
+      showToast('Switched to Anonymous Mode');
+      await fetchUserDisplayName();
+    } else {
+      window.location.reload();
+    }
   });
 
   eraseBtn.addEventListener('click', async e => {
@@ -369,34 +576,28 @@
       const res = await fetch('/erase', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
       const data = await res.json();
       showToast(data.ok ? `Deleted ${data.deleted || 0} entries.` : `Erase error: ${data.error || 'Unknown'}`, data.ok ? 'success':'error');
+      if (data.ok) {
+        localStorage.removeItem('chat_history');
+        chatBox.innerHTML = '';
+      }
     } catch { showToast('Erase failed. Try again later.', 'error'); }
   });
 
-  // ======= CHAT HELPERS =======
-  function appendMessage(text, sender, type='dialogflow') {
-    const msgDiv = document.createElement('div');
-    let senderClasses = sender==='user' ? 'bg-teal-600 text-white rounded-br-none self-end ml-auto'
-                        : type==='tip' ? 'bg-yellow-200 text-yellow-900 rounded-bl-none self-start'
-                        : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-none self-start';
-    msgDiv.className = `p-3 rounded-2xl max-w-[70%] shadow-md ${senderClasses}`;
-    msgDiv.textContent = text;
-    if(sender!=='user') msgDiv.setAttribute('aria-live','polite');
-    chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
+  // Emoji quick buttons
+  emojiButtons.forEach(btn => btn.addEventListener('click', () => {
+    input.value = (input.value ? input.value + ' ' : '') + btn.textContent;
+    input.focus();
+  }));
 
-  function showTyping() {
-    const typingDiv = document.createElement('div');
-    typingDiv.id = 'typingIndicator';
-    typingDiv.className = 'flex items-center space-x-1 p-3 text-sm text-gray-500 dark:text-gray-400';
-    typingDiv.innerHTML = `<span></span><span></span><span></span>`;
-    chatBox.appendChild(typingDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-  function hideTyping() { const el = document.getElementById('typingIndicator'); if(el) el.remove(); }
+  // Help resources button action (in crisis banner)
+  helpResourcesBtn?.addEventListener('click', () => window.open('/resources', '_blank'));
 
+  // ======= CHAT HELPERS (core behavior retained) =======
   async function fetchPrompt() {
     try {
+      // show prompt only when there is no local history (avoid duplication)
+      const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
+      if (history && history.length) return;
       const res = await fetch(`/daily_checkin_prompt?lang=${currentLang}`);
       const data = await res.json();
       if(data.prompt) appendMessage(data.prompt,'bot');
@@ -404,55 +605,74 @@
   }
 
   async function sendMessage(msg) {
-  if (!msg) return;
-  appendMessage(msg, 'user');
-  input.value = '';
-  try {
+    if (!msg) return;
+    appendMessage(msg, 'user');
+    input.value = '';
+    chatError.classList.add('hidden');
+
+    // spinner for slow responses (1.5s)
+    slowSpinnerTimer = setTimeout(() => {
+      showSlowSpinner();
+    }, 1500);
+
     showTyping();
-    const res = await fetch('/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg, lang: currentLang })
-    });
-    const result = await res.json();
-    
-    // Check if the request was successful and if the data exists
-    if (result.ok && result.data) {
-      const responseData = result.data;
-      
-      // Check for the crisis_detected flag returned by the backend
-      if (responseData.crisis_detected) {
-        crisisBanner.textContent = "It sounds like you might be going through a tough time. Remember to reach out to a professional or a trusted friend if you need support."; // You might want a different message here
-        crisisBanner.classList.remove('hidden');
-        appendMessage(responseData.response, 'bot');
-      } else {
-        crisisBanner.classList.add('hidden');
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, lang: currentLang })
+      });
+      const result = await res.json();
+      // clear spinner
+      clearTimeout(slowSpinnerTimer);
+      hideSlowSpinner();
+      hideTyping();
+
+      if (result.ok && result.data) {
+        const responseData = result.data;
+
+        // show crisis banner if backend flagged it
+        if (responseData.crisis_detected) {
+          crisisBanner.classList.remove('hidden');
+        } else {
+          crisisBanner.classList.add('hidden');
+        }
+
+        // append the response (can be plain string or JSON-formatted)
         if (responseData.response) {
           appendMessage(responseData.response, 'bot');
+        } else {
+          appendMessage("I'm here to listen. Can you tell me more?", 'bot');
         }
+      } else {
+        // show server-provided message or generic error
+        const errMsg = result.message || "Failed to send message.";
+        chatError.textContent = errMsg;
+        chatError.classList.remove('hidden');
+        appendMessage(errMsg, 'bot');
       }
-    } else {
-      chatError.textContent = result.message || "Failed to send message.";
+    } catch (err) {
+      clearTimeout(slowSpinnerTimer);
+      hideSlowSpinner();
+      hideTyping();
+      chatError.textContent = "Failed to send message.";
       chatError.classList.remove('hidden');
+      console.error(err);
+      appendMessage("Network error. Please try again.", 'bot');
     }
-  } catch (err) {
-    chatError.textContent = "Failed to send message.";
-    chatError.classList.remove('hidden');
-    console.error(err);
-  } finally {
-    hideTyping();
   }
-}
+
+  // SEND handlers
   sendBtn.addEventListener('click', () => sendMessage(input.value));
   input.addEventListener('keypress', e => { if(e.key==='Enter') sendMessage(input.value); });
 
-  // ======= DARK MODE =======
+  // ======= THEME =======
   const themeToggleBtn = document.getElementById('themeToggleBtn');
-  const themeIcon = themeToggleBtn.querySelector('i');
   function updateTheme() {
     const dark = localStorage.getItem('darkMode')==='enabled';
     document.documentElement.classList.toggle('dark', dark);
-    themeIcon.setAttribute('data-lucide', dark?'sun':'moon');
+    const icon = themeToggleBtn.querySelector('i');
+    if (icon) icon.setAttribute('data-lucide', dark?'sun':'moon');
     lucide.createIcons();
   }
   themeToggleBtn.addEventListener('click', () => {
@@ -461,19 +681,15 @@
     updateTheme();
   });
 
-  // ======= TOAST =======
-  function showToast(msg,type='success') {
-    const toast = document.getElementById('toast');
-    toast.textContent=msg;
-    toast.style.backgroundColor=type==='success'?'#10B981':'#EF4444';
-    toast.classList.remove('hidden');
-    setTimeout(()=>toast.classList.add('hidden'),3000);
-  }
-
-  // ======= INITIALIZE PAGE =======
+  // ======= INIT on load =======
   document.addEventListener("DOMContentLoaded", async () => {
     updateTheme();
     await checkInitialState();
+    if (!mainContainer.classList.contains('hidden')) {
+      restoreChatHistory();
+      await fetchPrompt();
+    }
+    lucide.createIcons();
   });
 
 </script>

@@ -1,189 +1,219 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sahaay-AI - Your Companion for Mental Wellness</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      scroll-behavior: smooth;
-    }
-    .hero {
-      background: linear-gradient(135deg, #0f172a, #14b8a6);
-    }
-    .feature-card:hover {
-      transform: translateY(-8px);
-      transition: transform 0.3s ease;
-    }
-    .btn-primary:hover {
-      background-color: #e0f2f1;
-    }
-    .btn-secondary:hover {
-      background-color: white;
-      color: #14b8a6;
-    }
-    .chat-demo {
-      max-height: 300px;
-      overflow-y: auto;
-    }
-  </style>
-</head>
-<body class="bg-gray-50">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sahaay-AI | Your Companion for Mental Wellness</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  /* 3D Animation & Card Effects */
+  .card-3d { transform-style: preserve-3d; transform: perspective(1000px) rotateX(0deg) rotateY(0deg); transition: transform 0.6s ease, box-shadow 0.3s ease; }
+  .card-3d:hover { transform: perspective(1000px) rotateX(8deg) rotateY(8deg); box-shadow: 0 25px 50px rgba(0, 255, 255, 0.2); }
+  .float { animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0px);} 50%{transform:translateY(-12px);} }
 
-<!-- Navigation -->
-<nav class="p-6 flex justify-between items-center fixed w-full z-20 bg-transparent">
-  <a href="/" class="text-2xl font-bold text-white">Sahaay-AI</a>
-  <div class="flex space-x-4">
-    <a href="/login" class="px-4 py-2 text-white bg-teal-600 rounded-lg shadow-lg hover:bg-teal-500 transition-colors">Login</a>
-    <a href="/signup" class="px-4 py-2 text-white border border-white rounded-lg hover:bg-white hover:text-teal-600 transition-colors">Sign Up</a>
+  /* Background Animation */
+  .animated-bg { position:absolute;width:100%;height:100%; background:linear-gradient(-45deg,#3b82f6,#06b6d4,#9333ea,#f43f5e); background-size:400% 400%; animation:gradientShift 10s ease infinite; z-index:-1;}
+  @keyframes gradientShift {0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+
+  /* Section Fade-in */
+  [data-animate] { opacity:0; transform:translateY(40px); transition:all 1s ease-out; }
+  [data-animate].visible { opacity:1; transform:translateY(0); }
+
+  /* FAQ Styling */
+  .faq-item summary { cursor:pointer; font-weight:600; font-size:1.125rem; color:#22d3ee; }
+  .faq-item p { margin-top:0.5rem; color:#d1d5db; }
+</style>
+</head>
+<body class="bg-gray-900 text-white">
+
+<!-- Navbar -->
+<nav class="fixed top-0 left-0 w-full bg-gray-900/90 backdrop-blur-md shadow-lg z-50">
+  <div class="flex items-center justify-between px-6 py-4 w-full">
+
+    <!-- Left: Logo -->
+    <div class="flex-shrink-0">
+      <span class="text-2xl font-bold text-cyan-400">Sahaay-AI</span>
+    </div>
+
+    <!-- Center: Navigation Links -->
+    <div class="flex-grow flex justify-center space-x-6 text-gray-200">
+      <a href="#features" class="hover:text-cyan-400 transition">Features</a>
+      <a href="#mood-tracking" class="hover:text-cyan-400 transition">Mood Tracking</a>
+      <a href="#chatbot" class="hover:text-cyan-400 transition">Chatbot</a>
+      <a href="#faq" class="hover:text-cyan-400 transition">FAQ</a>
+      <a href="#contact" class="hover:text-cyan-400 transition">Contact</a>
+    </div>
+
+    <!-- Right: Login & Get Started -->
+    <div class="flex-shrink-0 flex space-x-4">
+      <a href="/login" class="px-4 py-2 text-white border border-cyan-500 rounded-lg hover:bg-cyan-500 hover:text-gray-900 transition">Login</a>
+      <a href="/signup" class="px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-lg shadow hover:scale-105 transition">Get Started</a>
+    </div>
+
   </div>
 </nav>
 
-<!-- Hero Section -->
-<header class="hero min-h-screen text-white flex items-center justify-center text-center px-4 relative">
-  <div class="max-w-3xl">
-    <h1 class="text-5xl md:text-6xl font-extrabold leading-tight mb-6">Sahaay-AI: Your Companion for Mental Wellness</h1>
-    <p class="text-lg md:text-xl mb-8 text-gray-200">
-      A secure, private space for daily check-ins, mood tracking, and personalized guidance.
-    </p>
+<!-- Hero -->
+<header class="hero min-h-screen flex items-center justify-center text-center px-4 relative overflow-hidden" data-animate>
+  <div class="animated-bg"></div>
+  <div class="max-w-3xl relative z-10 mt-20">
+    <h1 class="text-5xl md:text-6xl font-extrabold mb-6">Sahaay-AI: Your Companion for Mental Wellness</h1>
+    <p class="text-lg md:text-xl mb-8 text-gray-200">A secure, private space for daily check-ins, mood tracking, and personalized guidance.</p>
     <div class="flex justify-center space-x-4 flex-wrap">
-      <a href="/signup" class="px-8 py-4 text-lg font-semibold text-teal-900 bg-white rounded-xl shadow-lg btn-primary transition">Get Started</a>
-      <a href="#features" class="px-8 py-4 text-lg font-semibold text-white border-2 border-white rounded-xl btn-secondary transition">Join Sahaay-AI</a>
+      <a href="/signup" class="px-8 py-4 text-lg font-semibold text-teal-900 bg-white rounded-xl shadow-lg transition hover:scale-105">Get Started</a>
+      <a href="#features" class="px-8 py-4 text-lg font-semibold text-white border-2 border-white rounded-xl transition hover:bg-white hover:text-teal-900">Join Sahaay-AI</a>
     </div>
   </div>
 </header>
 
 <!-- Features Section -->
-<section id="features" class="py-20 px-4 bg-gray-50">
+<section id="features" class="py-20 px-4 bg-gray-950" data-animate>
   <div class="max-w-6xl mx-auto">
-    <h2 class="text-4xl font-bold text-center mb-12 text-gray-900">What Makes Sahaay-AI Unique</h2>
+    <h2 class="text-4xl font-bold text-center mb-12 text-white">What Makes Sahaay-AI Unique</h2>
     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-      <div class="p-8 rounded-2xl bg-white shadow-xl feature-card">
+      <div class="p-8 rounded-2xl bg-gray-800/70 backdrop-blur-md border border-gray-700 shadow-xl card-3d float hover:shadow-cyan-500/40">
         <div class="text-6xl mb-4">🔒</div>
-        <h3 class="text-2xl font-semibold mb-2">Confidential & Private</h3>
-        <p class="text-gray-600">
-          All your data is anonymized and auto-deletes, keeping your information secure.
-        </p>
+        <h3 class="text-2xl font-semibold mb-2 text-white">Confidential & Private</h3>
+        <p class="text-gray-300">Your data is anonymized and auto-deletes, keeping you secure.</p>
       </div>
-      <div class="p-8 rounded-2xl bg-white shadow-xl feature-card">
-        <div class="text-6xl mb-4">🤖</div>
-        <h3 class="text-2xl font-semibold mb-2">AI-Powered Companion</h3>
-        <p class="text-gray-600">
-          A non-judgmental partner for daily check-ins and emotional support.
-        </p>
+      <div class="p-8 rounded-2xl bg-gray-800/70 backdrop-blur-md border border-gray-700 shadow-xl card-3d float hover:shadow-cyan-500/40">
+        <div class="text-6xl mb-4">🌍</div>
+        <h3 class="text-2xl font-semibold mb-2 text-white">Multilingual Support</h3>
+        <p class="text-gray-300">Express yourself in your preferred language without barriers.</p>
       </div>
-      <div class="p-8 rounded-2xl bg-white shadow-xl feature-card">
+      <div class="p-8 rounded-2xl bg-gray-800/70 backdrop-blur-md border border-gray-700 shadow-xl card-3d float hover:shadow-cyan-500/40">
         <div class="text-6xl mb-4">📊</div>
-        <h3 class="text-2xl font-semibold mb-2">Personalized Analytics</h3>
-        <p class="text-gray-600">
-          Visualize your mood trends and gain insights into your emotional patterns.
-        </p>
+        <h3 class="text-2xl font-semibold mb-2 text-white">Mood Insights</h3>
+        <p class="text-gray-300">Track emotional trends with clear, insightful visualizations.</p>
       </div>
-      <div class="p-8 rounded-2xl bg-white shadow-xl feature-card">
-        <div class="text-6xl mb-4">🛠️</div>
-        <h3 class="text-2xl font-semibold mb-2">Proactive Support</h3>
-        <p class="text-gray-600">
-          Receive instant coping tools and access crisis resources when needed.
-        </p>
+      <div class="p-8 rounded-2xl bg-gray-800/70 backdrop-blur-md border border-gray-700 shadow-xl card-3d float hover:shadow-cyan-500/40">
+        <div class="text-6xl mb-4">🤝</div>
+        <h3 class="text-2xl font-semibold mb-2 text-white">Compassionate Support</h3>
+        <p class="text-gray-300">AI-driven empathetic guidance designed for youth wellness.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Testimonials Section -->
-<section class="py-20 px-4">
-  <div class="max-w-5xl mx-auto">
-    <h2 class="text-4xl font-bold text-center mb-12 text-gray-900">What Our Users Say</h2>
-    <div class="grid md:grid-cols-3 gap-8">
-      <div class="p-6 rounded-2xl bg-white shadow-lg text-center">
-        <p class="text-gray-700 mb-4">"Sahaay-AI helped me see patterns in my anxiety I never noticed before."</p>
-        <h4 class="font-semibold text-gray-900">– Priya M.</h4>
-      </div>
-      <div class="p-6 rounded-2xl bg-white shadow-lg text-center">
-        <p class="text-gray-700 mb-4">"I feel like I have a safe space to talk, without judgment."</p>
-        <h4 class="font-semibold text-gray-900">– Raj K.</h4>
-      </div>
-      <div class="p-6 rounded-2xl bg-white shadow-lg text-center">
-        <p class="text-gray-700 mb-4">"The coping tools are so helpful on tough days. It's like having a guide in my pocket."</p>
-        <h4 class="font-semibold text-gray-900">– Ananya S.</h4>
-      </div>
-    </div>
+<!-- Mood Tracking Section -->
+<section id="mood-tracking" class="py-20 px-4 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-600 text-white" data-animate>
+  <div class="max-w-5xl mx-auto text-center">
+    <h2 class="text-4xl font-bold mb-8">Track Your Mood</h2>
+    <p class="text-lg mb-12">Get a clear picture of your emotional journey through interactive charts and journaling.</p>
+    <canvas id="moodChart" class="mx-auto max-w-2xl"></canvas>
   </div>
 </section>
 
-<!-- Mini Chatbot Demo -->
-<section class="py-20 px-4 bg-gray-100">
-  <div class="max-w-3xl mx-auto text-center">
-    <h2 class="text-4xl font-bold mb-8 text-gray-900">Experience Sahaay-AI</h2>
-    <p class="text-gray-700 mb-6">See how the AI supports you in a friendly conversation:</p>
-    <div class="border rounded-2xl bg-white shadow-lg mx-auto p-4 chat-demo max-w-md">
-      <div class="space-y-4">
-        <div class="text-left"><span class="font-semibold">You:</span> I'm feeling anxious today.</div>
-        <div class="text-left bg-teal-100 inline-block px-3 py-2 rounded-lg"><span class="font-semibold">Sahaay-AI:</span> I'm here with you. Let's take a deep breath together. 🌿</div>
-        <div class="text-left"><span class="font-semibold">You:</span> Thank you, that helps.</div>
-        <div class="text-left bg-teal-100 inline-block px-3 py-2 rounded-lg"><span class="font-semibold">Sahaay-AI:</span> Anytime! Remember, tracking your feelings daily helps you understand them better.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Analytics Preview -->
-<section class="py-20 px-4">
+<!-- Chatbot Section -->
+<section id="chatbot" class="py-20 px-4 bg-gray-900" data-animate>
   <div class="max-w-4xl mx-auto text-center">
-    <h2 class="text-4xl font-bold mb-8 text-gray-900">Visualize Your Emotional Patterns</h2>
-    <p class="text-gray-700 mb-8">Interactive analytics help you understand trends in your moods over time.</p>
-    <canvas id="moodChart" class="mx-auto rounded-xl shadow-lg" width="600" height="300"></canvas>
+    <h2 class="text-4xl font-bold mb-8 text-white">Talk to Sahaay-AI</h2>
+    <div class="bg-gray-800/70 backdrop-blur-md rounded-2xl shadow-xl p-8 border border-gray-700">
+      <div id="chatWindow" class="h-64 overflow-y-auto border border-gray-700 rounded-lg p-4 text-left mb-4 text-gray-100"></div>
+      <div class="flex">
+        <input type="text" id="userInput" placeholder="Type your message..."
+          class="flex-grow px-4 py-2 border border-gray-700 bg-gray-900 text-white rounded-l-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">
+        <button onclick="sendMessage()"
+          class="px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-r-lg hover:from-cyan-400 hover:to-teal-400 transition">
+          Send
+        </button>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- CTA Section -->
-<section class="py-16 bg-teal-600 text-white text-center">
-  <h2 class="text-3xl md:text-4xl font-bold mb-4">Start Your Mental Wellness Journey Today</h2>
-  <p class="mb-8">Sign up now and get personalized support every day.</p>
-  <a href="/signup" class="px-10 py-4 text-xl font-semibold bg-white text-teal-900 rounded-xl shadow-lg hover:bg-gray-200 transition">Try Now</a>
+
+<!-- Contact Section -->
+<section id="contact" class="py-20 px-6 bg-gradient-to-r from-purple-700 via-cyan-600 to-teal-500 text-white" data-animate>
+  <div class="max-w-5xl mx-auto">
+    <h2 class="text-4xl font-bold text-center mb-12">Contact Us</h2>
+    <div class="grid md:grid-cols-2 gap-12">
+      <div>
+        <h3 class="text-2xl font-semibold mb-4">Get in Touch</h3>
+        <p class="text-gray-200 mb-6">We’d love to hear from you! Questions, feedback, or support, reach out anytime.</p>
+        <p class="mb-2"><strong>Email:</strong> <a href="mailto:support@sahaay-ai.com" class="text-cyan-300 hover:underline">support@sahaay-ai.com</a></p>
+        <p class="mb-2"><strong>Phone:</strong> +91 98765 43210</p>
+        <p><strong>Address:</strong> Chennai, India</p>
+      </div>
+      <div class="bg-gray-800/70 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-700">
+        <form>
+          <input type="text" placeholder="Your Name" class="w-full mb-4 px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:ring-2 focus:ring-cyan-400">
+          <input type="email" placeholder="Your Email" class="w-full mb-4 px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:ring-2 focus:ring-cyan-400">
+          <textarea placeholder="Your Message" rows="4" class="w-full mb-4 px-4 py-3 rounded-lg bg-gray-900 text-white border border-gray-700 focus:ring-2 focus:ring-cyan-400"></textarea>
+          <button type="submit" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-lg shadow hover:scale-105 transition">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ Section -->
+<section id="faq" class="py-20 px-6 bg-gray-950 text-white" data-animate>
+  <div class="max-w-4xl mx-auto">
+    <h2 class="text-4xl font-bold text-center mb-12">Frequently Asked Questions</h2>
+    <div class="space-y-4">
+      <details class="faq-item bg-gray-800/70 backdrop-blur-md p-6 rounded-xl border border-gray-700">
+        <summary>What is Sahaay-AI?</summary>
+        <p>Sahaay-AI is an AI-powered mental wellness companion designed to provide a safe, private, and judgment-free space for you to express your thoughts and feelings. It helps you understand your emotional trends and offers personalized coping tools.</p>
+      </details>
+      <details class="faq-item bg-gray-800/70 backdrop-blur-md p-6 rounded-xl border border-gray-700">
+        <summary>How does Sahaay-AI work?</summary>
+        <p>Private chat with AI, mood analysis, and dashboard visualizations help track emotional patterns.</p>
+      </details>
+      <details class="faq-item bg-gray-800/70 backdrop-blur-md p-6 rounded-xl border border-gray-700">
+        <summary>Is my data safe and private?</summary>
+        <p>Yes, secure storage with anonymization options and clear data policy.</p>
+      </details>
+      <details class="faq-item bg-gray-800/70 backdrop-blur-md p-6 rounded-xl border border-gray-700">
+        <summary>Can Sahaay-AI replace a therapist?</summary>
+        <p>No, it provides supportive guidance but not professional therapy. Crisis contacts included.</p>
+      </details>
+      <details class="faq-item bg-gray-800/70 backdrop-blur-md p-6 rounded-xl border border-gray-700">
+        <summary>What kind of coping tools does it offer?</summary>
+        <p>Breathing, mindfulness, self-care, and grounding exercises personalized to your mood.</p>
+      </details>
+      <details class="faq-item bg-gray-800/70 backdrop-blur-md p-6 rounded-xl border border-gray-700">
+        <summary>What technology powers Sahaay-AI?</summary>
+        <p>Backend: Python & Flask, AI: Gemini API, DB: Firestore, Frontend: Tailwind CSS.</p>
+      </details>
+    </div>
+  </div>
 </section>
 
 <!-- Footer -->
-<footer class="bg-gray-900 text-white py-6 text-center">
-  <div class="mb-4">
-    <a href="/privacy" class="mx-2 hover:text-teal-400">Privacy Policy</a>|
-    <a href="/contact" class="mx-2 hover:text-teal-400">Contact</a>|
-    <a href="/terms" class="mx-2 hover:text-teal-400">Terms of Service</a>
-  </div>
-  <p>&copy; 2025 Sahaay-AI. All Rights Reserved.</p>
+<footer class="bg-gray-900 text-gray-400 py-6 text-center">
+  <p>&copy; 2025 Sahaay-AI. Built with 💙 for youth mental wellness.</p>
 </footer>
 
-<!-- Chart.js for Analytics -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Scripts -->
 <script>
+  // Mood Chart
   const ctx = document.getElementById('moodChart').getContext('2d');
-  const moodChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [{
-        label: 'Mood Level',
-        data: [3, 4, 2, 5, 4, 3, 4],
-        fill: true,
-        backgroundColor: 'rgba(20,184,166,0.2)',
-        borderColor: '#14b8a6',
-        tension: 0.3,
-        pointBackgroundColor: '#14b8a6'
-      }]
+  new Chart(ctx, {
+    type:'line', data:{
+      labels:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+      datasets:[{label:'Mood Level', data:[5,6,7,4,6,8,7], borderColor:'#22d3ee', backgroundColor:'rgba(34,211,238,0.2)', fill:true, tension:0.4}]
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: { beginAtZero: true, max: 5 }
-      }
-    }
+    options:{responsive:true, plugins:{legend:{labels:{color:'white'}}}, scales:{x:{ticks:{color:'white'}},y:{ticks:{color:'white'}}}}
   });
-</script>
 
+  // Chatbot Demo
+  function sendMessage(){
+    const input=document.getElementById("userInput");
+    const chatWindow=document.getElementById("chatWindow");
+    const userMessage=input.value.trim();
+    if(!userMessage)return;
+    chatWindow.innerHTML+=`<div class="mb-2"><strong>You:</strong> ${userMessage}</div>`;
+    input.value="";
+    chatWindow.scrollTop=chatWindow.scrollHeight;
+    setTimeout(()=>{ chatWindow.innerHTML+=`<div class="mb-2 text-cyan-300"><strong>Sahaay-AI:</strong> I'm here for you. 💙</div>`; chatWindow.scrollTop=chatWindow.scrollHeight; },1000);
+  }
+
+  // Section Animation
+  const observer=new IntersectionObserver(entries=>{ entries.forEach(entry=>{ if(entry.isIntersecting) entry.target.classList.add("visible"); }); }, {threshold:0.1});
+  document.querySelectorAll("[data-animate]").forEach(el=>observer.observe(el));
+</script>
 </body>
 </html>

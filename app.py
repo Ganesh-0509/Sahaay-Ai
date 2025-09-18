@@ -328,22 +328,43 @@ def daily_checkin_prompt():
     prompt_text = prompts.get(lang, prompts['en'])
     return jsonify({"prompt": prompt_text})
 
-@app.route('/api/consent_status')
-@login_required
+@app.route("/api/consent_status", methods=["GET"])
 def consent_status():
     try:
-        user_doc = users_ref.document(current_user.id).get()
-        if not user_doc.exists:
-            return jsonify({"ok": False, "status": "Unknown"}), 404
-        data = user_doc.to_dict()
-        # Change according to your consent logic
-        if data.get("consent") == True:
-            status = "Consent Given"
+        if current_user.is_authenticated:
+            # Logged-in user → check Firestore
+            user_id = current_user.id
+            user_doc = db.collection("users").document(user_id).get()
+            if user_doc.exists:
+                data = user_doc.to_dict()
+                has_consent = data.get("has_consent", False)
+            else:
+                has_consent = False
         else:
-            status = "Anonymous / Not Given"
-        return jsonify({"ok": True, "status": status})
+            # Anonymous → check session only
+            has_consent = session.get("has_consent", False)
+
+        return jsonify({"has_consent": has_consent})
     except Exception as e:
-        return jsonify({"ok": False, "status": "Error"}), 500
+        print("Consent status fetch error:", e)
+        return jsonify({"has_consent": False}), 500
+
+
+@app.route("/api/set_consent", methods=["POST"])
+def set_consent():
+    try:
+        if current_user.is_authenticated:
+            # Logged-in user → store in Firestore
+            user_id = current_user.id
+            db.collection("users").document(user_id).set({"has_consent": True}, merge=True)
+        else:
+            # Anonymous → store in session only
+            session["has_consent"] = True
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        print("Set consent error:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 @app.route('/api/submit_consent', methods=['POST'])
 def submit_consent():
@@ -537,17 +558,41 @@ def api_tools_data():
     period = request.args.get('period', 'last10')
     try:
         checkins_query = db.collection(f"users/{user_id}/checkins").order_by("timestamp", direction=firestore.Query.DESCENDING)
-        if period != 'all': checkins_query = checkins_query.limit(10)
+        if period != 'all':
+            checkins_query = checkins_query.limit(10)
         checkins = checkins_query.stream()
+
         tools = []
         for doc in checkins:
             data = doc.to_dict()
-            tip_text = data.get("coping_tip", "")
-            tip_match = re.search(r'Tip:\s*(.*)', tip_text, re.DOTALL)
-            tip_text_cleaned = tip_match.group(1).strip() if tip_match else tip_text
+            tip_text = data.get("coping_tip", "").strip()
+            tip_text_cleaned = tip_text
+
+            # 1. Remove Markdown code fences if present
+            if tip_text.startswith("```"):
+                tip_text = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", tip_text).strip()
+
+            # 2. Try parsing as JSON
+            try:
+                parsed = json.loads(tip_text)
+                if isinstance(parsed, dict):
+                    # Handle nested {"response": {"Tip": "..."}}
+                    tip_text_cleaned = (
+                        parsed.get("response", {}).get("Tip")
+                        or parsed.get("Tip")
+                        or tip_text
+                    )
+            except Exception:
+                # 3. Fallback: Regex extract if plain text contains "Tip:"
+                tip_match = re.search(r'Tip:\s*(.*)', tip_text, re.DOTALL)
+                tip_text_cleaned = tip_match.group(1).strip() if tip_match else tip_text
+
             tools.append({
-                "tip_id": doc.id, "description": tip_text_cleaned, "mood": data.get("mood", "neutral")
+                "tip_id": doc.id,
+                "description": tip_text_cleaned,
+                "mood": data.get("mood", "neutral")
             })
+
         return jsonify({"tools": tools})
     except Exception as e:
         print("Tools API fetch error:", e)
