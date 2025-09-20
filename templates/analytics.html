@@ -7,70 +7,68 @@
 {% endblock %}
 
 {% block content %}
-<header class="flex justify-between items-center mb-8">
+<header class="flex justify-between items-center mb-8 animated-item">
     <div class="flex items-center gap-4">
-        <button id="menuBtn" class="text-gray-800 dark:text-gray-100 text-2xl font-bold md:hidden">☰</button>
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ lang.analytics }}</h1>
+        <h1 class="text-3xl font-bold text-theme-text-main">{{ lang.analytics }}</h1>
     </div>
     <div class="flex items-center gap-4">
         <div class="relative inline-block text-left">
-            <select id="filterSelect" class="bg-white dark:bg-gray-800 border dark:border-gray-600 rounded-lg shadow-sm px-4 py-2 text-sm font-medium">
+            <select id="filterSelect" class="bg-theme-panel border border-theme-primary/30 rounded-xl shadow-lg px-4 py-2 text-sm font-medium text-theme-text-main focus:ring-2 focus:ring-theme-primary focus:border-theme-primary">
                 <option value="last10">Last 10 Entries</option>
                 <option value="30days">Last 30 Days</option>
                 <option value="all">All Time</option>
             </select>
         </div>
-        <button id="darkModeBtn" class="px-3 py-1 rounded-lg bg-gray-200 dark:bg-gray-800 dark:text-gray-100">🌙</button>
     </div>
 </header>
 
 <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg text-center">
-        <h2 class="text-lg font-semibold mb-2">{{ lang.avg_sentiment }}</h2>
-        <p id="kpiAvgSentiment" class="text-3xl font-bold">--</p>
+    <div class="card animated-item text-center" style="animation-delay: 0.1s">
+        <h2 class="text-lg font-semibold mb-2 text-theme-text-main">{{ lang.avg_sentiment }}</h2>
+        <p id="kpiAvgSentiment" class="text-3xl font-bold text-theme-accent">--</p>
     </div>
-    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg text-center">
-        <h2 class="text-lg font-semibold mb-2">{{ lang.most_frequent_mood }}</h2>
-        <p id="kpiMostMood" class="text-3xl font-bold">--</p>
+    <div class="card animated-item text-center" style="animation-delay: 0.2s">
+        <h2 class="text-lg font-semibold mb-2 text-theme-text-main">{{ lang.most_frequent_mood }}</h2>
+        <p id="kpiMostMood" class="text-3xl font-bold text-theme-primary">--</p>
     </div>
-    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg text-center">
-        <h2 class="text-lg font-semibold mb-2">{{ lang.total_checkins }}</h2>
-        <p id="kpiTotalCheckins" class="text-3xl font-bold">--</p>
+    <div class="card animated-item text-center" style="animation-delay: 0.3s">
+        <h2 class="text-lg font-semibold mb-2 text-theme-text-main">{{ lang.total_checkins }}</h2>
+        <p id="kpiTotalCheckins" class="text-3xl font-bold text-theme-secondary">--</p>
     </div>
 </section>
 
 <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-        <h2 class="text-lg font-semibold mb-3">{{ lang.mood_distribution }}</h2>
+    <div class="card animated-item" style="animation-delay: 0.4s">
+        <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.mood_distribution }}</h2>
         <canvas id="moodDistributionChart"></canvas>
     </div>
-    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-        <h2 class="text-lg font-semibold mb-3">{{ lang.mood_trend }}</h2>
+    <div class="card animated-item" style="animation-delay: 0.5s">
+        <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.mood_trend }}</h2>
         <canvas id="moodTrendChart"></canvas>
     </div>
 </section>
 
 <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-        <h2 class="text-lg font-semibold mb-3">{{ lang.top_words }}</h2>
+    <div class="card animated-item" style="animation-delay: 0.6s">
+        <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.top_words }}</h2>
         <div id="wordCloud" class="flex flex-wrap gap-2 justify-center py-4"></div>
     </div>
-    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-        <h2 class="text-lg font-semibold mb-3">{{ lang.top_3_tips }}</h2>
-        <ul id="topTips" class="list-disc list-inside text-gray-600 dark:text-gray-300"></ul>
+    <div class="card animated-item" style="animation-delay: 0.7s">
+        <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.top_3_tips }}</h2>
+        <ul id="topTips" class="list-disc list-inside text-theme-text-subtle"></ul>
     </div>
 </section>
 
-<section class="card bg-teal-50 dark:bg-teal-900 p-6 rounded-2xl shadow-lg mb-8">
-    <h2 class="text-lg font-semibold mb-3">{{ lang.insights }}</h2>
-    <p id="insightsBox" class="text-gray-800 dark:text-gray-100 italic"></p>
+<section class="card animated-item mb-8" style="animation-delay: 0.8s; background: linear-gradient(135deg, rgba(138, 108, 255, 0.1), rgba(197, 118, 255, 0.1)); border: 1px solid rgba(138, 108, 255, 0.3);">
+    <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.insights }}</h2>
+    <p id="insightsBox" class="text-theme-text-main italic"></p>
 </section>
 
-<div id="entryModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-2xl max-h-full overflow-y-auto">
+<div id="entryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+    <div class="bg-theme-panel backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-full overflow-y-auto border border-theme-primary/30">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-2xl font-bold" id="modalTitle">Journal Entries</h3>
-            <button id="closeModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-3xl">&times;</button>
+            <h3 class="text-2xl font-bold text-theme-text-main" id="modalTitle">Journal Entries</h3>
+            <button id="closeModal" class="text-theme-text-subtle hover:text-theme-text-main text-3xl transition-colors">&times;</button>
         </div>
         <div id="modalEntries" class="space-y-4"></div>
     </div>
@@ -83,7 +81,7 @@
     let moodDistributionChart=null;
     let moodTrendChart=null;
     let allEntries = {}; 
-    const moodColors={happy:"#FBBF24",calm:"#10B981",neutral:"#3B82F6",anxious:"#EC4899",sad:"#8B5CF6",stressed:"#F87171",lonely:"#6B7280"};
+    const moodColors={happy:"#FFD166",calm:"#10B981",neutral:"#8A6CFF",anxious:"#FF5C8D",sad:"#C576FF",stressed:"#F87171",lonely:"#A99BDB"};
 
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
@@ -111,7 +109,41 @@
             const ctx1=document.getElementById('moodDistributionChart').getContext('2d');
             if(moodDistributionChart) moodDistributionChart.destroy();
             const totalCount = Object.values(data.mood_counts).reduce((a,b)=>a+b,0);
-            moodDistributionChart = new Chart(ctx1,{ type:'doughnut', data:{ labels:Object.keys(data.mood_counts), datasets:[{ data:Object.values(data.mood_counts), backgroundColor:Object.keys(data.mood_counts).map(m=>moodColors[m]||"#6B7280") }] }, options:{ responsive:true, plugins:{ tooltip:{ callbacks:{ label:function(ctx){ const val=ctx.raw; const perc = totalCount > 0 ? ((val/totalCount)*100).toFixed(1) : 0; return `${ctx.label}: ${val} (${perc}%)`; } } }, legend:{position:'bottom'} } } });
+            moodDistributionChart = new Chart(ctx1,{ 
+                type:'doughnut', 
+                data:{ 
+                    labels:Object.keys(data.mood_counts), 
+                    datasets:[{ 
+                        data:Object.values(data.mood_counts), 
+                        backgroundColor:Object.keys(data.mood_counts).map(m=>moodColors[m]||"#8A6CFF"),
+                        borderColor: '#F0EBFF',
+                        borderWidth: 2
+                    }] 
+                }, 
+                options:{ 
+                    responsive:true, 
+                    plugins:{ 
+                        tooltip:{ 
+                            callbacks:{ 
+                                label:function(ctx){ 
+                                    const val=ctx.raw; 
+                                    const perc = totalCount > 0 ? ((val/totalCount)*100).toFixed(1) : 0; 
+                                    return `${ctx.label}: ${val} (${perc}%)`; 
+                                } 
+                            } 
+                        }, 
+                        legend:{
+                            position:'bottom',
+                            labels: {
+                                color: '#F0EBFF',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        } 
+                    } 
+                } 
+            });
 
             const ctx2=document.getElementById('moodTrendChart').getContext('2d');
             if(moodTrendChart) moodTrendChart.destroy();
@@ -123,7 +155,41 @@
                 const dataMap = new Map(trend.map(item=>[item.date,item.sentiment]));
                 datasets.push({ label:mood.charAt(0).toUpperCase() + mood.slice(1), data:sortedDates.map(d=>dataMap.get(d)), borderColor:moodColors[mood]||"#6B7280", backgroundColor:(moodColors[mood]||"#6B7280")+"33", fill:false, tension:0.3, pointRadius:4 });
             }
-            moodTrendChart = new Chart(ctx2,{ type:'line', data:{labels:sortedDates,datasets:datasets}, options:{ responsive:true, interaction:{mode:'index',intersect:false}, scales:{ y:{beginAtZero:false,title:{display:true,text:'Average Sentiment'}}, x:{title:{display:true,text:'Date'}} }, onClick: (evt) => { const points = moodTrendChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const date = moodTrendChart.data.labels[points[0].index]; showEntriesForDate(date); } } } });
+            moodTrendChart = new Chart(ctx2,{ 
+                type:'line', 
+                data:{labels:sortedDates,datasets:datasets}, 
+                options:{ 
+                    responsive:true, 
+                    interaction:{mode:'index',intersect:false}, 
+                    scales:{ 
+                        y:{
+                            beginAtZero:false,
+                            title:{display:true,text:'Average Sentiment', color: '#F0EBFF'},
+                            ticks: { color: '#F0EBFF' },
+                            grid: { color: 'rgba(240, 235, 255, 0.1)' }
+                        }, 
+                        x:{
+                            title:{display:true,text:'Date', color: '#F0EBFF'},
+                            ticks: { color: '#F0EBFF' },
+                            grid: { color: 'rgba(240, 235, 255, 0.1)' }
+                        } 
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#F0EBFF'
+                            }
+                        }
+                    },
+                    onClick: (evt) => { 
+                        const points = moodTrendChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); 
+                        if (points.length) { 
+                            const date = moodTrendChart.data.labels[points[0].index]; 
+                            showEntriesForDate(date); 
+                        } 
+                    } 
+                } 
+            });
 
             const wordCloud=document.getElementById("wordCloud");
             wordCloud.innerHTML="";
@@ -132,8 +198,8 @@
                     const span=document.createElement("span");
                     span.textContent=word;
                     span.style.fontSize=`${12+Math.log(count)*4}px`;
-                    const bgColor=moodColors[data.word_moods[word]||'neutral']||"#3B82F6";
-                    span.className=`p-1 px-2 rounded-full text-white font-semibold`;
+                    const bgColor=moodColors[data.word_moods[word]||'neutral']||"#8A6CFF";
+                    span.className=`p-1 px-2 rounded-full text-white font-semibold shadow-lg`;
                     span.style.backgroundColor=bgColor;
                     wordCloud.appendChild(span);
                 });
@@ -144,7 +210,7 @@
             if(data.top_tips && data.top_tips.length>0){
                 data.top_tips.forEach(tip=>{
                     const li=document.createElement("li");
-                    li.className="p-1 my-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded cursor-pointer";
+                    li.className="p-3 my-2 hover:bg-theme-primary/20 rounded-xl cursor-pointer transition-all duration-200 border border-theme-primary/20";
                     li.textContent=tip;
                     li.title="Click to copy";
                     li.onclick=()=>{ navigator.clipboard.writeText(tip).then(() => showToast("Copied tip!"), () => showToast("Copy failed", "error")); };
@@ -167,19 +233,19 @@
         if (entries && entries.length > 0) {
             entries.forEach(entry => {
                 const entryDiv = document.createElement('div');
-                entryDiv.className = 'bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow-inner';
+                entryDiv.className = 'bg-theme-panel/50 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-theme-primary/20';
                 const timestamp = new Date(entry.timestamp.seconds * 1000);
                 entryDiv.innerHTML = `
                     <div class="flex items-center space-x-2 mb-2">
-                        <span class="font-bold text-lg capitalize">${entry.mood}</span>
-                        <span class="text-gray-500 dark:text-gray-400 text-sm">${timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                        <span class="text-sm rounded-full px-2 py-0.5 text-white" style="background-color: ${moodColors[entry.mood.toLowerCase()] || "#6B7280"};">Sentiment: ${entry.sentiment}</span>
+                        <span class="font-bold text-lg capitalize text-theme-text-main">${entry.mood}</span>
+                        <span class="text-theme-text-subtle text-sm">${timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span class="text-sm rounded-full px-2 py-0.5 text-white shadow-md" style="background-color: ${moodColors[entry.mood.toLowerCase()] || "#8A6CFF"};">Sentiment: ${entry.sentiment}</span>
                     </div>
-                    <p class="text-gray-800 dark:text-gray-100">${entry.text || 'No text provided.'}</p>`;
+                    <p class="text-theme-text-main">${entry.text || 'No text provided.'}</p>`;
                 modalEntries.appendChild(entryDiv);
             });
         } else {
-            modalEntries.innerHTML = '<p class="text-center text-gray-500">No entries found for this date.</p>';
+            modalEntries.innerHTML = '<p class="text-center text-theme-text-subtle">No entries found for this date.</p>';
         }
         document.getElementById('entryModal').classList.remove('hidden');
     }

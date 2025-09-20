@@ -1,74 +1,250 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" >
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sahaay AI - {% block title %}{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <script>
-        tailwind.config = { darkMode: 'class' };
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'theme-bg': '#1A103C',
+                        'theme-panel': 'rgba(45, 33, 89, 0.85)',
+                        'theme-hover': '#3E2D7A',
+                        'theme-primary': '#8A6CFF',
+                        'theme-secondary': '#C576FF',
+                        'theme-text-main': '#F0EBFF',
+                        'theme-text-subtle': '#A99BDB',
+                        'theme-accent': '#FFD166',
+                        'theme-pulse': '#FF5C8D',
+                    },
+                    borderRadius: {
+                        '4xl': '2rem',
+                    },
+                    boxShadow: {
+                        'primary-glow': '0 0 25px 0 rgba(138, 108, 255, 0.5)',
+                        'secondary-glow': '0 0 30px 0 rgba(197, 118, 255, 0.4)',
+                        'card-hover': '0 10px 40px rgba(138, 108, 255, 0.35)',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 15px 0 rgba(138, 108, 255, 0.3)' },
+                            '50%': { boxShadow: '0 0 35px 5px rgba(138, 108, 255, 0.6)' },
+                        },
+                        animatedGradient: {
+                           '0%': { backgroundPosition: '0% 50%' },
+                           '50%': { backgroundPosition: '100% 50%' },
+                           '100%': { backgroundPosition: '0% 50%' },
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                        'pulse-glow': 'pulseGlow 2.5s infinite ease-in-out',
+                        'animated-gradient': 'animatedGradient 15s ease infinite',
+                    }
+                }
+            }
+        };
     </script>
-    {% block head_scripts %}{% endblock %}
+        {% block head_scripts %}{% endblock %}
+
     <style>
-        .sidebar-link { display: flex; gap: 0.5rem; font-size: 1.125rem; color: #374151; text-decoration: none; transition: all 0.3s; padding: 0.25rem 0.5rem; border-radius: 0.5rem; }
-        .sidebar-link:hover { color: #0284c7; background-color: #bae6fd; }
-        .dark .sidebar-link { color: #d1d5db; }
-        .dark .sidebar-link:hover { color: #a5f3fc; background-color: #1e293b; }
-        .sidebar-active { color: #0284c7 !important; background-color: #bae6fd !important; }
-        .dark .sidebar-active { color: #a5f3fc !important; background-color: #1e293b !important; }
-        .card { transition: all 0.3s; }
+        /* Global */
+        * { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+        body {
+            background: linear-gradient(-45deg, #1A103C, #3E2D7A, #1A103C, #8A6CFF);
+            background-size: 400% 400%;
+            font-family: 'Inter', sans-serif;
+            color: #F0EBFF;
+            animation: animatedGradient 20s ease infinite;
+        }
+
+        /* Particle Canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+        }
+
+        /* Sidebar Links */
+        .sidebar-link { 
+            display: flex; align-items: center; gap: 0.75rem; font-size: 1rem; font-weight: 500;
+            color: #F0EBFF; text-decoration: none; padding: 0.75rem 1rem; border-radius: 1rem; 
+            transform: scale(1);
+        }
+        .sidebar-link:hover { 
+            color: #FFD166; 
+            background: rgba(138, 108, 255, 0.25); 
+            transform: translateX(5px) scale(1.03);
+        }
+        .sidebar-active { 
+            color: #FFFFFF !important; 
+            background: linear-gradient(90deg, #8A6CFF, #C576FF) !important; 
+            animation: pulseGlow 2.5s infinite ease-in-out;
+            box-shadow: 0 0 30px rgba(138, 108, 255, 0.5);
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(45, 33, 89, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 2rem;
+            border: 1px solid rgba(138, 108, 255, 0.25);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            padding: 1.5rem;
+            transform: translateY(0);
+            transition: all 0.3s ease-in-out;
+            position: relative;
+        }
+        .card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(138, 108, 255, 0.5);
+            box-shadow: 0 15px 40px rgba(138, 108, 255, 0.4);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(90deg, #8A6CFF, #C576FF);
+            color: #FFFFFF;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 2rem;
+            box-shadow: 0 0 25px rgba(138, 108, 255, 0.4);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 35px rgba(197, 118, 255, 0.5);
+        }
+
+        /* Animations for items */
+        .animated-item { opacity: 1 !important; }
+        #mainContent { position: relative; z-index: 10; }
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
+<body class="font-sans">
+
+<canvas id="particle-canvas"></canvas>
 
 <div class="flex min-h-screen">
-    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-xl p-6 flex flex-col transition-transform duration-300 transform -translate-x-full md:translate-x-0 z-50">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Sahaay AI</h2>
-        <nav class="space-y-4 flex-1">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-theme-panel backdrop-blur-xl border-r border-theme-primary/20 shadow-2xl p-6 flex-col transition-transform duration-500 ease-in-out transform -translate-x-full md:flex md:translate-x-0 z-50">
+        <h2 class="text-3xl font-bold mb-8 text-white">Sahaay AI</h2>
+        <nav class="space-y-2 flex-1">
             <a href="{{ url_for('dashboard') }}" class="sidebar-link {% if request.path == url_for('dashboard') %}sidebar-active{% endif %}">🏠 {{ lang.overview }}</a>
             <a href="{{ url_for('dashboard_mood') }}" class="sidebar-link {% if request.path == url_for('dashboard_mood') %}sidebar-active{% endif %}">📔 {{ lang.mood_journal }}</a>
             <a href="{{ url_for('dashboard_tools') }}" class="sidebar-link {% if request.path == url_for('dashboard_tools') %}sidebar-active{% endif %}">🧘 {{ lang.coping_tools }}</a>
             <a href="{{ url_for('dashboard_analytics') }}" class="sidebar-link {% if request.path == url_for('dashboard_analytics') %}sidebar-active{% endif %}">📊 {{ lang.analytics }}</a>
-            <a href="{{ url_for('dashboard_settings') }}" class="sidebar-link {% if request.path == url_for('dashboard_settings') %}sidebar-active{% endif %}">⚙️ {{ lang.settings }}</a>
+            <a href="{{ url_for('dashboard_settings') }}" class="sidebar-link {% if request.path == url_for('dashboard_settings') %}sidebar-active{% endif %}">⚙ {{ lang.settings }}</a>
         </nav>
         <div>
-             <a href="{{ url_for('logout') }}" class="sidebar-link text-red-500 hover:bg-red-100 dark:hover:bg-red-900">🚪 Logout</a>
+             <a href="{{ url_for('logout') }}" class="sidebar-link text-theme-text-subtle hover:bg-red-500/20 hover:text-white">🚪 Logout</a>
         </div>
     </aside>
 
-    <main id="mainContent" class="flex-1 p-8 overflow-y-auto ml-0 md:ml-64 transition-all duration-300">
+    <main id="mainContent" class="flex-1 p-6 sm:p-8 overflow-y-auto ml-0 md:ml-64 transition-all duration-300">
+        <button id="menuBtn" class="md:hidden p-2 rounded-lg bg-theme-panel backdrop-blur-lg text-white mb-4 fixed top-4 left-4 z-50 hover:scale-110 active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+        </button>
         {% block content %}{% endblock %}
     </main>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Standardized Sidebar Toggle Logic
+        // Sidebar Toggle
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
         if (menuBtn && sidebar) {
-            menuBtn.addEventListener('click', () => {
-                sidebar.classList.toggle('-translate-x-full');
-            });
+            menuBtn.addEventListener('click', () => sidebar.classList.toggle('-translate-x-full'));
         }
 
-        // Standardized Dark Mode Toggle
-        const darkModeBtn = document.getElementById("darkModeBtn");
-        if (darkModeBtn) {
-            // Set initial state from localStorage
-            if(localStorage.getItem('darkMode') === 'enabled'){
-                document.documentElement.classList.add('dark');
-                darkModeBtn.textContent = "☀️";
+        // Staggered Animation on Load
+        const animatedItems = document.querySelectorAll('.animated-item');
+        animatedItems.forEach((item) => {
+            const delay = item.style.animationDelay || '0ms';
+            item.style.animation = `fadeInUp 0.6s ease-out ${delay} forwards`;
+        });
+
+        // Particle Canvas Animation
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        const setupCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.color = `rgba(197, 118, 255, ${Math.random() * 0.5 + 0.2})`;
             }
-            // Add click listener
-            darkModeBtn.addEventListener("click", () => {
-                const isDark = document.documentElement.classList.toggle("dark");
-                darkModeBtn.textContent = isDark ? "☀️" : "🌙";
-                localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
-            });
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
+
+        const initParticles = () => {
+            particles = [];
+            let numberOfParticles = (canvas.width * canvas.height) / 9000;
+            for (let i = 0; i < numberOfParticles; i++) {
+                particles.push(new Particle());
+            }
+        };
+
+        const animateParticles = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animateParticles);
+        };
+        
+        setupCanvas();
+        initParticles();
+        animateParticles();
+        window.addEventListener('resize', () => {
+            setupCanvas();
+            initParticles();
+        });
     });
 </script>
 {% block page_scripts %}{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>

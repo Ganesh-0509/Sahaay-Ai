@@ -17,6 +17,9 @@
   .animated-bg { position:absolute;width:100%;height:100%; background:linear-gradient(-45deg,#3b82f6,#06b6d4,#9333ea,#f43f5e); background-size:400% 400%; animation:gradientShift 10s ease infinite; z-index:-1;}
   @keyframes gradientShift {0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 
+  /* Navbar Gradient Sync */
+  .navbar-bg { background:linear-gradient(-45deg,#3b82f6,#06b6d4,#9333ea,#f43f5e); background-size:400% 400%; animation:gradientShift 10s ease infinite; backdrop-filter:blur(10px); }
+
   /* Section Fade-in */
   [data-animate] { opacity:0; transform:translateY(40px); transition:all 1s ease-out; }
   [data-animate].visible { opacity:1; transform:translateY(0); }
@@ -29,26 +32,26 @@
 <body class="bg-gray-900 text-white">
 
 <!-- Navbar -->
-<nav class="fixed top-0 left-0 w-full bg-gray-900/90 backdrop-blur-md shadow-lg z-50">
+<nav id="navbar" class="fixed top-0 left-0 w-full navbar-bg shadow-lg z-50">
   <div class="flex items-center justify-between px-6 py-4 w-full">
 
     <!-- Left: Logo -->
     <div class="flex-shrink-0">
-      <span class="text-2xl font-bold text-cyan-400">Sahaay-AI</span>
+      <span class="text-2xl font-bold text-white">Sahaay-AI</span>
     </div>
 
     <!-- Center: Navigation Links -->
-    <div class="flex-grow flex justify-center space-x-6 text-gray-200">
-      <a href="#features" class="hover:text-cyan-400 transition">Features</a>
-      <a href="#mood-tracking" class="hover:text-cyan-400 transition">Mood Tracking</a>
-      <a href="#chatbot" class="hover:text-cyan-400 transition">Chatbot</a>
-      <a href="#faq" class="hover:text-cyan-400 transition">FAQ</a>
-      <a href="#contact" class="hover:text-cyan-400 transition">Contact</a>
+    <div class="flex-grow flex justify-center space-x-6">
+      <a href="#features" class="nav-link text-gray-200 hover:text-cyan-200 transition">Features</a>
+      <a href="#mood-tracking" class="nav-link text-gray-200 hover:text-cyan-200 transition">Mood Tracking</a>
+      <a href="#chatbot" class="nav-link text-gray-200 hover:text-cyan-200 transition">Chatbot</a>
+      <a href="#faq" class="nav-link text-gray-200 hover:text-cyan-200 transition">FAQ</a>
+      <a href="#contact" class="nav-link text-gray-200 hover:text-cyan-200 transition">Contact</a>
     </div>
 
     <!-- Right: Login & Get Started -->
     <div class="flex-shrink-0 flex space-x-4">
-      <a href="/login" class="px-4 py-2 text-white border border-cyan-500 rounded-lg hover:bg-cyan-500 hover:text-gray-900 transition">Login</a>
+      <a href="/login" class="px-4 py-2 text-white border border-cyan-200 rounded-lg hover:bg-cyan-200 hover:text-gray-900 transition">Login</a>
       <a href="/signup" class="px-6 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-lg shadow hover:scale-105 transition">Get Started</a>
     </div>
 
@@ -123,7 +126,6 @@
     </div>
   </div>
 </section>
-
 
 <!-- Contact Section -->
 <section id="contact" class="py-20 px-6 bg-gradient-to-r from-purple-700 via-cyan-600 to-teal-500 text-white" data-animate>
@@ -214,6 +216,29 @@
   // Section Animation
   const observer=new IntersectionObserver(entries=>{ entries.forEach(entry=>{ if(entry.isIntersecting) entry.target.classList.add("visible"); }); }, {threshold:0.1});
   document.querySelectorAll("[data-animate]").forEach(el=>observer.observe(el));
+
+  // Smooth Scrolling
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  // Scrollspy Active Link
+  const sections = document.querySelectorAll("section[id]");
+  const navLinks = document.querySelectorAll(".nav-link");
+
+  window.addEventListener("scroll", () => {
+    let scrollPos = window.scrollY + 100;
+    sections.forEach(section => {
+      if (scrollPos >= section.offsetTop && scrollPos < section.offsetTop + section.offsetHeight) {
+        navLinks.forEach(link => link.classList.remove("text-cyan-200"));
+        document.querySelector(`.nav-link[href="#${section.id}"]`).classList.add("text-cyan-200");
+      }
+    });
+  });
 </script>
 </body>
 </html>
+    

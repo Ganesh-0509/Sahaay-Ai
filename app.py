@@ -16,19 +16,47 @@ import re
 from google.cloud.firestore_v1 import _helpers
 from collections import Counter
 from textblob import TextBlob
+from collections import deque
+import requests
+
+
 
 # Load environment variables
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY")
 PUSHBULLET_API_TOKEN = os.getenv("PUSHBULLET_API_TOKEN")
+EMOTION_API_URL = os.getenv("EMOTION_API_URL")
+EMOTION_API_KEY = os.getenv("EMOTION_API_KEY")
 if not GEMINI_API_KEY or not SECRET_KEY:
     raise ValueError("GEMINI_API_KEY or SECRET_KEY is missing in .env")
+if not EMOTION_API_URL or not EMOTION_API_KEY:
+    raise ValueError("EMOTION_API_URL or EMOTION_API_KEY is missing in .env")
 
 # Flask setup
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 app.secret_key = SECRET_KEY
+
+# Simple in-memory rate limit store (per-process)
+RATE_LIMIT_MAX_REQUESTS = 10  # max requests
+RATE_LIMIT_WINDOW_SECONDS = 60  # per window seconds
+_rate_limit_store = {}
+
+def _rate_limited(key: str, max_requests: int = RATE_LIMIT_MAX_REQUESTS, window_seconds: int = RATE_LIMIT_WINDOW_SECONDS) -> bool:
+    now = datetime.utcnow().timestamp()
+    dq = _rate_limit_store.get(key)
+    if dq is None:
+        dq = deque()
+        _rate_limit_store[key] = dq
+    # drop old timestamps
+    cutoff = now - window_seconds
+    while dq and dq[0] < cutoff:
+        dq.popleft()
+    if len(dq) >= max_requests:
+        return True
+    dq.append(now)
+    return False
 
 # Flask-Login
 login_manager = LoginManager()
@@ -87,11 +115,26 @@ class User(UserMixin):
             'daily_reminder': False # Initialize daily reminder
         })
         return User(user_id, email, name)
+    
+class AnonymousUser(UserMixin):
+    def get_id(self):
+        if "anonymous_id" not in session:
+            session["anonymous_id"] = str(uuid.uuid4())
+        return session.get("anonymous_id")
+
+    @property
+    def is_authenticated(self):
+        return True
+
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.get(user_id)
+    user = User.get(user_id)
+    if user:
+        return user
+    return AnonymousUser()
 
+CHAT_HISTORY = {}  # key=user_id, value=list of messages
 
 # --- Expanded Multilingual Translations Dictionary ---
 TRANSLATIONS = {
@@ -156,40 +199,153 @@ crisis_model = genai.GenerativeModel('gemini-1.5-flash')
 CRISIS_EXCLUSION_LIST = ["bye", "goodbye", "later", "cya", "ok", "okay"]
 
 def is_crisis_sentence(text: str) -> bool:
-    if text.strip().lower() in CRISIS_EXCLUSION_LIST:
+    """
+    Uses Gemini AI to dynamically detect if a message indicates a crisis.
+    Returns True if crisis detected, False otherwise.
+    """
+    if not text.strip():
         return False
     try:
+        # Avoid false positives from common goodbye phrases
+        if text.strip().lower() in CRISIS_EXCLUSION_LIST:
+            return False
+        
         response = crisis_model.generate_content(CRISIS_PROMPT.format(text=text))
         result = response.text.strip().upper()
-        if result.startswith("CRISIS") and pb:
-            try:
-                # Here you might want to use the current_user's push_token if available
-                pb.push_note("Crisis Alert 🚨", f"A user just mentioned: '{text}'")
-            except Exception as e:
-                print(f"Pushbullet failed: {e}")
-            return True
-        return False
+        
+        # Push alert if crisis detected
+        token = getattr(current_user, "push_token", None)
+        if result.startswith("CRISIS") and pb and token:
+            pb.push_note("Crisis Alert 🚨", f"A user just mentioned: '{text}'")
+        
+        return result.startswith("CRISIS")
     except Exception as e:
         print(f"Crisis detection error: {e}")
         return False
 
+def process_and_store_message(user_id, message_text, doc_ref):
+    """
+    Processes a user message by sending it to Gemini API for emotion analysis.
+    """
+    try:
+        # Define the content to be sent to Gemini
+        prompt = f"""Analyze the following text and identify the primary emotions present. If more than one emotion is present, list them. The emotions should be from the following list: happy, sad, angry, anxious, calm, excited, confused, neutral.
+        
+        Example 1:
+        Text: "I had a great day today, but I'm a little tired."
+        Response: happy, tired
+        
+        Example 2:
+        Text: "I'm so frustrated with my work, and now I have a huge deadline."
+        Response: angry, anxious
+        
+        Example 3:
+        Text: "The movie was so boring and I just wanted to leave."
+        Response: sad
+        
+        Example 4:
+        Text: "{message_text}"
+        Response:"""
+        
+        request_body = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        # Send the request with the API key in the params
+        response = requests.post(
+            EMOTION_API_URL,
+            params={"key": EMOTION_API_KEY}, # Key is passed here
+            json=request_body
+        )
+        response.raise_for_status()
+
+        api_data = response.json()
+        
+        # Extract the text response from the API
+        response_text = api_data["candidates"][0]["content"]["parts"][0]["text"].strip().lower()
+        
+        # Parse the text into a list of emotions
+        # Handles cases like "happy, sad", or just "happy"
+        detected_emotions = [e.strip() for e in response_text.split(',')]
+        
+        # Ensure 'neutral' is a fallback if no specific emotions are detected
+        if not detected_emotions or detected_emotions == ['neutral']:
+            final_emotions = ["neutral"]
+        else:
+            final_emotions = detected_emotions
+
+        message_data = {
+            "text": message_text,
+            "timestamp": datetime.now(timezone.utc),
+            "emotions": final_emotions
+        }
+        
+        doc_ref.update({"messages": firestore.ArrayUnion([message_data])})
+        return {"emotions": final_emotions, "message": message_text}
+
+    except requests.exceptions.RequestException as e:
+        print(f"API call failed: {e}")
+        return {"emotions": ["unknown"], "message": message_text}
+    
 # --- Helper functions ---
 def save_checkin(user_id, mood, language, text, intent, sentiment, helpful_tip=None):
     if not db: return
     try:
-        # Generate coping tip before saving
-        coping_tip = generate_coping_tip(text) # Pass the original user text to the generator
-
-        db.collection(f"users/{user_id}/checkins").add({
-            "timestamp": firestore.SERVER_TIMESTAMP,
-            "mood": mood,
-            "language": language,
-            "text": text,
-            "intent": intent,
-            "sentiment": sentiment,
-            "coping_tip": coping_tip,
-            "helpful": False
-        })
+        today = datetime.utcnow().date()
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        # Query for today's entry
+        today_str = today.strftime("%Y-%m-%d")
+        docs = checkins_ref.where("date", "==", today_str).stream()
+        docs_list = list(docs)
+        if docs_list:
+            # Update existing entry: average mood/sentiment
+            doc = docs_list[0]
+            data = doc.to_dict()
+            # Aggregate sentiments and moods
+            sentiments = data.get("sentiments", [])
+            sentiments.append(sentiment)
+            avg_sentiment = sum(sentiments) / len(sentiments)
+            moods = data.get("moods", [])
+            moods.append(mood)
+            # Most common mood for the day
+            from collections import Counter
+            mood_counter = Counter(moods)
+            most_common_mood = mood_counter.most_common(1)[0][0]
+            # Update the document
+            doc.reference.update({
+                "sentiments": sentiments,
+                "avg_sentiment": avg_sentiment,
+                "moods": moods,
+                "mood": most_common_mood,
+                "language": language,
+                "last_text": text,
+                "intent": intent,
+                "coping_tip": helpful_tip or generate_coping_tip(text),
+                "timestamp": firestore.SERVER_TIMESTAMP
+            })
+        else:
+            # Create new entry for today
+            checkins_ref.add({
+                "date": today_str,
+                "sentiments": [sentiment],
+                "avg_sentiment": sentiment,
+                "moods": [mood],
+                "mood": mood,
+                "language": language,
+                "last_text": text,
+                "intent": intent,
+                "coping_tip": helpful_tip or generate_coping_tip(text),
+                "helpful": False,
+                "timestamp": firestore.SERVER_TIMESTAMP
+            })
     except Exception as e:
         print("Firestore save failed:", e)
 
@@ -216,24 +372,19 @@ def calculate_streak(timestamps):
     return streak
 
 def generate_coping_tip(mood_text):
-    prompt = (f"Analyze the following text describing a mood. Provide the single dominant emotion (e.g., 'anxiety', 'sadness', 'joy'). "
-              f"Then, suggest a specific, actionable coping tip for that emotion. "
-              f"Use the format: Emotion: <emotion>\\nSentiment: <positive/negative/neutral>\\nTip: <tip>. Text: \"{mood_text}\"")
+    """
+    Generates a coping tip based on the user's mood.
+    """
+    # Simplified prompt to ask for just the tip
+    prompt = f"Provide a single, specific, and actionable coping tip for someone feeling {mood_text}. Respond with only the tip text, no other information."
     try:
         response = model.generate_content(prompt)
-        return response.text
+        tip_text = response.text.strip()
+        return tip_text
     except Exception as e:
         print(f"Error generating coping tip: {e}")
-        return "Emotion: neutral\nSentiment: neutral\nTip: Take a deep breath and a moment for yourself."
-
-class AnonymousUser(UserMixin):
-    def get_id(self):
-        return session.get('anonymous_id')
-
-    @property
-    def is_authenticated(self):
-        return 'anonymous_id' in session and session['anonymous_id'] is not None
-
+        return "Take a deep breath and a moment for yourself."
+    
 def get_most_frequent_words(docs, num_words=30):
     stop_words = set(['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'of', 'at', 'by', 'for', 'with', 'about', 'to', 'from', 'in', 'out', 'on', 'off', 'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'doing', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'it', 'its', 'so', 'not', 'very', 'just'])
     words_by_mood = {}
@@ -279,7 +430,8 @@ def dashboard():
 @app.route("/chat")
 @login_required
 def chat_page():
-    return render_template('chat.html')
+    lang = get_user_translations()
+    return render_template('chat.html', lang=lang)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -314,6 +466,28 @@ def signup():
             return redirect(url_for('dashboard'))
     return render_template('signup.html')
 
+@app.route("/api/fetch_conversation", methods=["GET"])
+@login_required
+def fetch_conversation():
+    user_id = current_user.id
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({"ok": False, "error": "Date parameter is missing"}), 400
+
+    try:
+        # A unique document for each day for a user
+        doc_ref = db.collection(f"users/{user_id}/conversations").document(date_str)
+        doc = doc_ref.get()
+
+        if doc.exists:
+            data = doc.to_dict()
+            return jsonify({"ok": True, "messages": data.get("messages", [])})
+        else:
+            return jsonify({"ok": True, "messages": []})
+    except Exception as e:
+        print(f"Error fetching conversation: {e}")
+        return jsonify({"ok": False, "error": "Failed to fetch conversation history"}), 500
+    
 @app.route('/daily_checkin_prompt')
 def daily_checkin_prompt():
     lang = request.args.get('lang', 'en')
@@ -327,28 +501,6 @@ def daily_checkin_prompt():
     }
     prompt_text = prompts.get(lang, prompts['en'])
     return jsonify({"prompt": prompt_text})
-
-@app.route("/api/consent_status", methods=["GET"])
-def consent_status():
-    try:
-        if current_user.is_authenticated:
-            # Logged-in user → check Firestore
-            user_id = current_user.id
-            user_doc = db.collection("users").document(user_id).get()
-            if user_doc.exists:
-                data = user_doc.to_dict()
-                has_consent = data.get("has_consent", False)
-            else:
-                has_consent = False
-        else:
-            # Anonymous → check session only
-            has_consent = session.get("has_consent", False)
-
-        return jsonify({"has_consent": has_consent})
-    except Exception as e:
-        print("Consent status fetch error:", e)
-        return jsonify({"has_consent": False}), 500
-
 
 @app.route("/api/set_consent", methods=["POST"])
 def set_consent():
@@ -368,69 +520,174 @@ def set_consent():
 
 @app.route('/api/submit_consent', methods=['POST'])
 def submit_consent():
+    """
+    Called by the consent modal when user clicks Agree or Decline.
+    Persist to Firestore for logged-in users, otherwise session-based.
+    """
     data = request.get_json()
     consent = data.get('consent')
-
     if consent is None:
         return jsonify({"ok": False, "error": "Missing consent value"}), 400
+    try:
+        if current_user.is_authenticated and db is not None:
+            db.collection("users").document(current_user.id).set(
+                {"has_consent": bool(consent)},
+                merge=True
+            )
+        else:
+            session['has_consent'] = bool(consent)
 
-    # Save consent to session or DB
-    session['has_consent'] = consent  # example using session
-    status_text = "Consent Given" if consent else "Anonymous Mode (No data is saved)"
-    return jsonify({"ok": True, "status": status_text})
+        status_text = "Consent Given" if consent else "Anonymous Mode (No data is saved)"
+        return jsonify({"ok": True, "status": status_text})
+    except Exception as e:
+        print("Set consent error:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/consent_status', methods=['GET'])
+def consent_status():
+    """
+    Source of truth for consent state. 
+    Checks Firestore for logged-in users, else session.
+    """
+    try:
+        if current_user.is_authenticated and db is not None:
+            doc = db.collection("users").document(current_user.id).get()
+            if doc.exists:
+                return jsonify({"has_consent": doc.to_dict().get("has_consent", False)})
+            return jsonify({"has_consent": False})
+        return jsonify({"has_consent": session.get("has_consent", False)})
+    except Exception as e:
+        print("Consent status error:", e)
+        return jsonify({"has_consent": False, "error": str(e)}), 500
 
 # New route to get user info for the frontend
 @app.route('/api/get_user_info', methods=['GET'])
 def get_user_info():
     if current_user.is_authenticated:
         if isinstance(current_user, User):
-            return jsonify({"username": current_user.username, "is_anonymous": False})
-        else: # AnonymousUser instance
-            return jsonify({"username": "Anonymous", "is_anonymous": True})
-    return jsonify({"username": "Guest", "is_anonymous": False})
+            return jsonify({
+                "user_id": current_user.id,
+                "username": current_user.username,
+                "is_anonymous": False
+            })
+        else:
+            return jsonify({
+                "user_id": session.get('anonymous_id', 'anon'),
+                "username": "Anonymous",
+                "is_anonymous": True
+            })
+    return jsonify({"user_id": "guest", "username": "Guest", "is_anonymous": False})
+
+
+@app.route('/api/reset_consent', methods=['POST'])
+def reset_consent():
+    try:
+        if current_user.is_authenticated and db:
+            db.collection("users").document(current_user.id).update(
+                {"has_consent": firestore.DELETE_FIELD}
+            )
+        else:
+            session.pop("has_consent", None)
+        return jsonify({"ok": True, "has_consent": False})
+    except Exception as e:
+        print("Reset consent error:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 # --- Chat API ---
 @app.route("/chat", methods=["POST"])
 @login_required
 def chat():
     data = request.get_json()
-    message = data.get("message")
-    lang = data.get("lang", "en")
+    message = (data.get("message") or "").strip() if isinstance(data, dict) else ""
+    lang = data.get("lang", "en") if isinstance(data, dict) else "en"
 
     if not message:
         return jsonify({"ok": False, "message": "No message provided."}), 400
 
-    user_id = current_user.id if isinstance(current_user, User) else current_user.get_id()
+    # Basic input constraints
+    if len(message) > 2000:
+        return jsonify({"ok": False, "message": "Message too long. Please keep it under 2000 characters."}), 413
+
+    # Per-user rate limiting
+    limiter_key = None
+    try:
+        if current_user.is_authenticated:
+            limiter_key = f"user:{current_user.id}"
+        else:
+            limiter_key = f"ip:{request.remote_addr}"
+    except Exception:
+        limiter_key = f"ip:{request.remote_addr}"
+    if _rate_limited(limiter_key):
+        return jsonify({"ok": False, "message": "You are sending messages too quickly. Please wait a moment."}), 429
+    
+    user_id = getattr(current_user, "id", current_user.get_id())
+    history = CHAT_HISTORY.get(user_id, [])
+    history.append({"role": "user", "content": message})
 
     try:
-        # Use TextBlob for sentiment analysis
+        # --- Hybrid Sentiment/Emotion Analysis ---
+        # Step 1: Polarity from TextBlob
         analysis = TextBlob(message)
         sentiment_score = analysis.sentiment.polarity
-        
-        mood = "neutral"
-        if sentiment_score > 0.1:
-            mood = "happy"
-        elif sentiment_score < -0.1:
-            mood = "sad"
-        else:
-            mood = "neutral"
 
-        # Now, get the conversational response from the Gemini model
+        # Step 2: Map TextBlob polarity to coarse mood
+        if sentiment_score > 0.2:
+            coarse_mood = "positive"
+        elif sentiment_score < -0.2:
+            coarse_mood = "negative"
+        else:
+            coarse_mood = "mixed"   # replaces "neutral"
+
+        # Step 3: Emotion classifier (zero-shot style, simple version)
+        candidate_emotions = ["joy", "sadness", "anger", "fear", "surprise", "disgust", "love", "hope"]
+        # Quick heuristic: we could later replace this with HuggingFace pipeline
+        lower_msg = message.lower()
+        fine_mood = None
+        if any(word in lower_msg for word in ["happy","glad","excited","grateful","love"]):
+            fine_mood = "joy"
+        elif any(word in lower_msg for word in ["sad","down","lonely","depressed","cry"]):
+            fine_mood = "sadness"
+        elif any(word in lower_msg for word in ["angry","mad","furious","hate"]):
+            fine_mood = "anger"
+        elif any(word in lower_msg for word in ["scared","afraid","anxious","nervous"]):
+            fine_mood = "fear"
+        elif any(word in lower_msg for word in ["shock","surprised","amazed","unexpected"]):
+            fine_mood = "surprise"
+        elif any(word in lower_msg for word in ["disgust","gross","nasty"]):
+            fine_mood = "disgust"
+        elif any(word in lower_msg for word in ["hopeful","optimistic","looking forward"]):
+            fine_mood = "hope"
+        elif any(word in lower_msg for word in ["love","caring","affection"]):
+            fine_mood = "love"
+
+        # Merge both: hybrid mood
+        mood = fine_mood if fine_mood else coarse_mood
+
+        # --- Conversational response ---
         chat_session = model.start_chat(history=[])
         chat_response = chat_session.send_message(message)
-        response_text = chat_response.text if hasattr(chat_response, 'text') else str(chat_response)
+        response_text = chat_response.text if hasattr(chat_response, "text") else str(chat_response)
 
-        # Extract the JSON response from the model's output
-        match = re.search(r'\{.*\}', response_text.strip(), re.DOTALL)
+        CHAT_HISTORY[user_id] = history + [{"role": "assistant", "content": response_text}]
+
+        # Handle JSON responses if model outputs structured data
+        match = re.search(r"\{.*\}", response_text, re.DOTALL)
         if match:
-            json_string = match.group(0)
-            response_json = json.loads(json_string.replace('```json', '').replace('```', ''))
+            try:
+                response_json = json.loads(
+                    match.group(0).replace("```json", "").replace("```", "")
+                )
+            except:
+                response_json = {"response": response_text}
         else:
-            response_json = {"response": "I'm sorry, I'm having a little trouble with that. Can you tell me more in a different way?"}
+            response_json = {"response": response_text}
 
-        # Handle crisis detection
+        # Crisis detection
         crisis = is_crisis_sentence(message)
-        
+
+        # Save to DB
         if db:
             save_checkin(
                 user_id=user_id,
@@ -566,30 +823,10 @@ def api_tools_data():
         for doc in checkins:
             data = doc.to_dict()
             tip_text = data.get("coping_tip", "").strip()
-            tip_text_cleaned = tip_text
-
-            # 1. Remove Markdown code fences if present
-            if tip_text.startswith("```"):
-                tip_text = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", tip_text).strip()
-
-            # 2. Try parsing as JSON
-            try:
-                parsed = json.loads(tip_text)
-                if isinstance(parsed, dict):
-                    # Handle nested {"response": {"Tip": "..."}}
-                    tip_text_cleaned = (
-                        parsed.get("response", {}).get("Tip")
-                        or parsed.get("Tip")
-                        or tip_text
-                    )
-            except Exception:
-                # 3. Fallback: Regex extract if plain text contains "Tip:"
-                tip_match = re.search(r'Tip:\s*(.*)', tip_text, re.DOTALL)
-                tip_text_cleaned = tip_match.group(1).strip() if tip_match else tip_text
 
             tools.append({
                 "tip_id": doc.id,
-                "description": tip_text_cleaned,
+                "description": tip_text, # Use the tip_text directly as it's now clean
                 "mood": data.get("mood", "neutral")
             })
 
@@ -597,7 +834,22 @@ def api_tools_data():
     except Exception as e:
         print("Tools API fetch error:", e)
         return jsonify({"tools": []}), 500
-
+    
+@app.route('/erase', methods=['POST'])
+@login_required
+def erase_data():
+    user_id = current_user.id
+    try:
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        deleted = 0
+        for doc in checkins_ref.stream():
+            doc.reference.delete()
+            deleted += 1
+        return jsonify({"ok": True, "deleted": deleted})
+    except Exception as e:
+        print("Erase failed:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+    
 @app.route("/api/analytics_data")
 @login_required
 def analytics_data():
@@ -612,32 +864,56 @@ def analytics_data():
     else:
         docs_stream = ref.order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
     docs = [d.to_dict() for d in docs_stream]
+
+    # Use aggregated daily data
     mood_counts = Counter(d.get("mood", "neutral").lower() for d in docs)
     sentiments_by_mood_and_date = {}
     entries_by_date = {}
     for d in docs:
         mood = d.get("mood", "neutral").lower()
-        sentiment = float(d.get("sentiment") or 0)
+        avg_sentiment = float(d.get("avg_sentiment") or 0)
         ts = d.get("timestamp")
-        if ts:
-            date_str = ts.strftime("%Y-%m-%d")
-            if mood not in sentiments_by_mood_and_date: sentiments_by_mood_and_date[mood] = {}
-            sentiments_by_mood_and_date[mood].setdefault(date_str, []).append(sentiment)
-            if date_str not in entries_by_date: entries_by_date[date_str] = []
-            entries_by_date[date_str].append(d)
-    trend_by_mood = {mood: [{"date": date, "sentiment": sum(vals) / len(vals)} for date, vals in sorted(dates.items())] for mood, dates in sentiments_by_mood_and_date.items()}
+        date_str = ts.strftime("%Y-%m-%d") if ts else "N/A"
+        if mood not in sentiments_by_mood_and_date:
+            sentiments_by_mood_and_date[mood] = {}
+        sentiments_by_mood_and_date[mood].setdefault(date_str, []).append(avg_sentiment)
+        entries_by_date.setdefault(date_str, []).append(d)
+
+    trend_by_mood = {
+        mood: [
+            {"date": date, "sentiment": sum(vals) / len(vals)}
+            for date, vals in sorted(dates.items())
+        ]
+        for mood, dates in sentiments_by_mood_and_date.items()
+    }
+
+    # For word cloud, combine all 'last_text' fields
     most_frequent_words, word_moods = get_most_frequent_words(docs)
-    top_tips = [tip for tip, _ in Counter(d.get("coping_tip") for d in docs if d.get("helpful") and d.get("coping_tip")).most_common(3)]
+    top_tips = [
+        tip for tip, _ in Counter(
+            d.get("coping_tip") for d in docs if d.get("helpful") and d.get("coping_tip")
+        ).most_common(3)
+    ]
     total_checkins = len(docs)
-    avg_sentiment = round(sum(d.get("sentiment", 0) for d in docs) / max(total_checkins, 1), 2)
+    avg_sentiment = round(
+        sum(d.get("avg_sentiment", 0) for d in docs) / max(total_checkins, 1), 2
+    )
     most_common_mood = mood_counts.most_common(1)[0][0].capitalize() if mood_counts else "Neutral"
     insights = f"You’ve checked in {total_checkins} times."
     if total_checkins > 0:
         insights += f" Your top mood is {most_common_mood}."
     return jsonify({
-        "mood_counts": dict(mood_counts), "trend_by_mood": trend_by_mood, "most_frequent_words": most_frequent_words,
-        "top_tips": top_tips, "word_moods": word_moods, "entries_by_date": entries_by_date,
-        "kpis": {"total_checkins": total_checkins, "most_common_mood": most_common_mood, "avg_sentiment": avg_sentiment},
+        "mood_counts": dict(mood_counts),
+        "trend_by_mood": trend_by_mood,
+        "most_frequent_words": most_frequent_words,
+        "top_tips": top_tips,
+        "word_moods": word_moods,
+        "entries_by_date": entries_by_date,
+        "kpis": {
+            "total_checkins": total_checkins,
+            "most_common_mood": most_common_mood,
+            "avg_sentiment": avg_sentiment
+        },
         "insights": insights,
     })
 

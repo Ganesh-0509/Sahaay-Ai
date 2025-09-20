@@ -1,203 +1,143 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title data-lang="chat_title">Sahaay-AI Daily Check-in</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<style>
-  .transition-smooth { transition: all 0.3s ease-in-out; }
-  .chat-box::-webkit-scrollbar { width: 6px; }
-  .chat-box::-webkit-scrollbar-thumb { background-color: rgba(107,114,128,0.5); border-radius: 3px; }
+{% extends "_layout.html" %}
 
-  /* Typing indicator */
-  .typing-indicator span {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin-left: 4px;
-    border-radius: 50%;
-    background-color: #a1a1aa;
-    animation: bounce 1.2s infinite ease-in-out both;
-  }
-  .typing-indicator span:nth-child(1) { animation-delay: -0.24s; }
-  .typing-indicator span:nth-child(2) { animation-delay: -0.12s; }
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1.0); }
-  }
+{% block title %}Sahaay-AI Daily Check-in{% endblock %}
 
-  /* Fade-in for messages */
-  .msg-fade { animation: msgAppear .28s ease-out both; }
-  @keyframes msgAppear { from { transform: translateY(6px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-
-  /* Avatars */
-  .avatar { width: 34px; height: 34px; border-radius: 999px; display:flex; align-items:center; justify-content:center; font-size:16px; }
-
-  /* Mood card */
-  .mood-card { border-radius: 12px; padding: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); max-width:78%; }
-  .mood-card .tip { white-space: pre-wrap; }
-
-  /* Spinner over Send button */
-  .send-spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,0.6); border-top-color:rgba(255,255,255,1); border-radius:50%; animation:spin 1s linear infinite; display:inline-block; vertical-align:middle; margin-left:8px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Emoji quick row */
-  .emoji-row button { font-size:20px; }
-
-  /* Toast */
-  .toast { display:none; align-items:center; gap:0.5rem; }
-  .toast.show { display:flex; }
-</style>
-</head>
-<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-900 dark:text-gray-100">
-
-<div id="toast" class="toast fixed bottom-8 right-8 z-[1000] min-w-[250px] p-4 rounded-xl shadow-lg text-white font-medium" role="alert" aria-live="polite"></div>
-
-<div id="crisisBanner" class="hidden bg-red-600 dark:bg-red-700 text-white px-4 py-2 text-center font-semibold animate-pulse" role="alert" aria-live="assertive" data-lang="crisis_banner">
-  <div class="flex items-center justify-center gap-4">
-    <div>⚠️ It sounds like you might be going through a tough time.</div>
-    <div class="flex gap-2">
-      <a id="helpResourcesBtn" href="/resources" target="_blank" class="bg-white text-red-700 px-3 py-1 rounded-lg font-semibold">Get help & resources</a>
-    </div>
-  </div>
-</div>
-
-<div id="consentModal" role="dialog" aria-labelledby="consentTitle" aria-describedby="consentDesc" tabindex="0"
-     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden">
-  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-[90%] max-w-md flex flex-col gap-4">
-    <h2 id="consentTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="consent_title">Privacy & Consent</h2>
-    <p id="consentDesc" class="text-sm text-gray-600 dark:text-gray-300" data-lang="consent_desc">
-      We store only anonymized mood check-ins to improve wellbeing support. You can continue
-      <b>with consent</b> (data helps insights) or in <b>anonymous mode</b> (no storage). You can delete your data anytime.
-      <span title="Data is anonymized and kept for 30 days">❓</span>
-    </p>
-    <div class="flex flex-col gap-2">
-      <button id="consentAgree" class="bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" tabindex="0" data-lang="consent_agree_button">
-        I Agree (Save Anonymized Check-ins)
-      </button>
-      <button id="consentAnon" class="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-6 py-3 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-smooth" tabindex="0" data-lang="consent_anon_button">
-        Use Anonymous Mode (Don’t Save)
-      </button>
-      <button id="consentExit" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 underline" tabindex="0" data-lang="consent_exit_button">
-        Exit
-      </button>
-    </div>
-    <p class="text-xs text-gray-500 dark:text-gray-400" data-lang="consent_footer">
-      Retention: 30 days • Right to Erase: “Delete my data” in header • Crisis: Helplines available
-    </p>
-  </div>
-</div>
-
-<!-- <div id="langModal" role="dialog" aria-labelledby="langTitle" aria-describedby="langDesc" tabindex="0"
-     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden">
-  <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 w-80 flex flex-col gap-4">
-    <h2 id="langTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="lang_title">Select Your Language</h2>
-    <p id="langDesc" class="text-sm text-gray-600 dark:text-gray-300" data-lang="lang_desc">Choose the language for your chat and prompts.</p>
-    <select id="langSelect" class="p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-700 dark:text-gray-100 w-full" tabindex="0">
-      <option value="" disabled selected data-lang="select_lang">Select Language</option>
-      <option value="en">English</option>
-      <option value="hi">Hindi</option>
-      <option value="es">Spanish</option>
-      <option value="ta">Tamil</option>
-    </select>
-    <button id="langSubmit" class="bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" tabindex="0" data-lang="lang_submit_button">Continue</button>
-  </div>
-</div> -->
-
-<div id="mainContainer" class="flex flex-col h-screen max-w-4xl mx-auto p-4 hidden">
-
-  <header class="flex justify-between items-center mb-6 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow">
-    <h1 id="pageTitle" class="text-xl font-semibold text-gray-800 dark:text-gray-100" data-lang="page_title">
-      Daily Check-in
-    </h1>
+{% block content %}
+<div id="mainContainer" class="flex flex-col min-h-screen">
+  <header class="flex justify-between items-center mb-6 bg-theme-panel p-4 rounded-2xl shadow animated-item">
+    <h1 id="pageTitle" class="text-xl font-semibold text-theme-text-main">Daily Check-in</h1>
     <div class="flex items-center gap-3">
-      <a href="/dashboard" id="dashboardLink" class="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-500 transition-smooth" data-lang="dashboard_button" aria-label="Open Dashboard">
+      <a href="/dashboard" id="dashboardLink" class="flex items-center gap-2 px-4 py-2 btn-primary rounded-lg shadow-md hover:opacity-90 transition" aria-label="Open Dashboard">
         <i data-lucide="home"></i> Dashboard
       </a>
-
       <div class="relative inline-block text-left">
-          <button id="userDropdownBtn" class="flex items-center justify-center w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-smooth" aria-haspopup="true" aria-expanded="true" aria-label="User menu">
-              <i data-lucide="user"></i>
-          </button>
-          <div id="userDropdownMenu" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 transition-smooth hidden z-20" role="menu" aria-orientation="vertical" aria-labelledby="userDropdownBtn">
-              <div class="py-1" role="none">
-                  <div id="usernameDisplay" class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200" role="menuitem">
-                      <span id="displayName">Loading...</span>
+        <button id="userDropdownBtn" class="flex items-center justify-center w-10 h-10 bg-theme-panel rounded-full focus:outline-none focus:ring-2 focus:ring-theme-accent transition" aria-haspopup="true" aria-expanded="true" aria-label="User menu">
+          <i data-lucide="user"></i>
+        </button>
+        <div id="userDropdownMenu" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-theme-panel ring-1 ring-black ring-opacity-5 transition hidden z-[1000]" role="menu" aria-orientation="vertical" aria-labelledby="userDropdownBtn">
+          <div class="py-1" role="none">
+            <div id="usernameDisplay" class="px-4 py-2 text-sm" role="menuitem">
+              <span id="displayName">Loading...</span>
+            </div>
+            <hr class="border-theme-primary mx-2">
+            <div id="anonymousToggle" class="block px-4 py-2 text-sm hover:bg-theme-accent transition" role="menuitem">
+              <div class="flex items-center justify-between">
+                <span>Anonymous Mode</span>
+                <label class="flex items-center cursor-pointer">
+                  <div class="relative">
+                    <input type="checkbox" id="anonymousCheckbox" class="sr-only" aria-label="Enable anonymous mode">
+                    <div class="block bg-theme-hover w-10 h-6 rounded-full"></div>
+                    <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all duration-300"></div>
                   </div>
-                  <hr class="border-gray-200 dark:border-gray-700 mx-2">
-                  <div id="anonymousToggle" class="text-gray-700 dark:text-gray-200 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-smooth" role="menuitem">
-                      <div class="flex items-center justify-between">
-                          <span>Anonymous Mode</span>
-                          <label class="flex items-center cursor-pointer">
-                              <div class="relative">
-                                  <input type="checkbox" id="anonymousCheckbox" class="sr-only" aria-label="Enable anonymous mode">
-                                  <div class="block bg-gray-600 dark:bg-gray-400 w-10 h-6 rounded-full"></div>
-                                  <div class="dot absolute left-1 top-1 bg-white dark:bg-gray-800 w-4 h-4 rounded-full transition-all duration-300"></div>
-                              </div>
-                          </label>
-                      </div>
-                  </div>
-                  <a href="#" id="eraseBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-500 hover:text-white rounded-md transition-smooth" data-lang="delete_data_button" role="menuitem" aria-label="Delete all data">
-                      <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Data
-                  </a>
-                  <a href="/logout" id="logoutBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-smooth" role="menuitem" aria-label="Logout">
-                      <i data-lucide="log-out" class="w-4 h-4"></i> Logout
-                  </a>
+                </label>
               </div>
+            </div>
+            <a href="#" id="eraseBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-theme-pulse hover:bg-theme-pulse/20 hover:text-white rounded-md transition" aria-label="Delete all data">
+              <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Data
+            </a>
+            <a href="/logout" id="logoutBtn" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-theme-accent rounded-md transition" role="menuitem" aria-label="Logout">
+              <i data-lucide="log-out" class="w-4 h-4"></i> Logout
+            </a>
           </div>
+        </div>
       </div>
-      <button id="themeToggleBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg transition-smooth bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600" aria-label="Toggle theme">
-        <i data-lucide="moon"></i>
-      </button>
     </div>
   </header>
 
-  <div id="consent-card" class="bg-white dark:bg-gray-800 rounded-2xl shadow p-4 mb-4">
-    <h2 class="text-lg font-semibold mb-2" data-lang="consent_status_title">Consent Status <span title="Data is anonymized, kept for 30 days">❓</span></h2>
-    <p id="consent-status" class="text-gray-700 dark:text-gray-300" data-lang="consent_status_loading">Loading...</p>
+  <div id="crisisBanner" class="bg-red-500 text-white p-4 rounded-xl shadow-md text-sm text-center mb-4 hidden">
+    <p>If you or someone you know is in crisis, please seek immediate help.</p>
+    <button id="helpResourcesBtn" class="underline font-bold mt-1">View Helplines & Resources</button>
   </div>
 
-  <div class="flex flex-col flex-1 bg-white dark:bg-gray-800 rounded-2xl shadow overflow-hidden">
-    <div id="chatBox" class="flex-1 flex flex-col gap-3 p-4 overflow-y-auto chat-box" role="log" aria-live="polite"></div>
+  <div id="consent-card" class="bg-theme-panel rounded-2xl shadow p-4 mb-4 animated-item">
+    <h2 class="text-lg font-semibold mb-2 text-theme-text-main">Consent Status <span title="Data is anonymized, kept for 30 days">❓</span></h2>
+    <p id="consent-status" class="text-theme-text-subtle">Loading...</p>
+  </div>
 
-    <!-- Emoji quick row -->
-    <div class="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+  <div class="flex flex-col flex-1 bg-theme-panel rounded-2xl shadow overflow-hidden animated-item">
+    <div id="chatBox" class="flex-1 flex flex-col gap-3 p-4 overflow-y-auto" role="log" aria-live="polite"></div>
+    <div class="p-2 border-t border-theme-primary bg-theme-panel">
       <div class="emoji-row flex gap-2 items-center">
-        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add happy emoji">😀</button>
-        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add sad emoji">😢</button>
-        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add anxious emoji">😰</button>
-        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add calm emoji">😌</button>
-        <button class="px-2 py-1 rounded transition-smooth" aria-label="Add heart emoji">❤️</button>
+        <button class="px-2 py-1" aria-label="Add happy emoji">😀</button>
+        <button class="px-2 py-1" aria-label="Add sad emoji">😢</button>
+        <button class="px-2 py-1" aria-label="Add anxious emoji">😰</button>
+        <button class="px-2 py-1" aria-label="Add calm emoji">😌</button>
+        <button class="px-2 py-1" aria-label="Add heart emoji">❤️</button>
       </div>
     </div>
-
-    <div class="flex gap-2 items-center p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-      <input id="message" type="text" placeholder="Type your message..." data-lang="input_placeholder"
-             class="flex-1 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100" aria-label="Type your message">
-      <button id="sendBtn" class="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl hover:bg-teal-500 transition-smooth" data-lang="send_button" aria-label="Send message">
+    <div class="flex gap-2 items-center p-3 border-t border-theme-primary bg-theme-panel">
+      <input id="message" type="text" placeholder="Type your message..."
+        class="flex-1 p-3 rounded-xl border-theme-primary focus:outline-none focus:ring-2 focus:ring-theme-accent bg-theme-panel text-theme-text-main" aria-label="Type your message">
+      <button id="sendBtn" class="flex items-center gap-2 btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition" aria-label="Send message">
         <i data-lucide="send"></i> <span id="sendText">Send</span>
         <span id="sendSpinner" class="hidden" aria-hidden="true"><span class="send-spinner" /></span>
       </button>
     </div>
   </div>
 
-  <p id="chatError" class="text-red-500 mt-2 hidden" data-lang="chat_error" role="status"></p>
-  
-  <footer class="text-center text-xs text-gray-500 mt-4">
-    <p data-lang="privacy_policy_link">
-        <a href="/privacy" class="underline">Privacy & Data Policy</a>
-    </p>
+  <p id="chatError" class="text-theme-pulse mt-2 hidden" role="status"></p>
+
+  <footer class="text-center text-xs text-theme-text-subtle mt-4">
+    <p><a href="/privacy" class="underline">Privacy & Data Policy</a></p>
     <button id="resetConsentBtn"
-            class="mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600" data-lang="reset_consent_button">
-        Reset Consent
+            class="mt-2 px-3 py-1 bg-theme-pulse text-white text-xs rounded hover:bg-theme-pulse/80">
+      Reset Consent
     </button>
   </footer>
 </div>
 
+<!-- Consent Modal -->
+<div id="consentModal" role="dialog" aria-labelledby="consentTitle" aria-describedby="consentDesc" tabindex="0"
+     class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[9999] hidden">
+  <div class="bg-theme-panel rounded-2xl p-6 w-[90%] max-w-md flex flex-col gap-4">
+    <h2 id="consentTitle" class="text-xl font-semibold text-theme-text-main">Privacy & Consent</h2>
+    <p id="consentDesc" class="text-sm text-theme-text-subtle">
+      We store only anonymized mood check-ins to improve wellbeing support. You can continue
+      <b>with consent</b> (data helps insights) or in <b>anonymous mode</b> (no storage). You can delete your data anytime.
+    </p>
+    <div class="flex flex-col gap-2">
+      <button id="consentAgree" class="btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition" tabindex="0">
+        I Agree (Save Anonymized Check-ins)
+      </button>
+      <button id="consentAnon" class="bg-theme-panel text-theme-text-main px-6 py-3 rounded-xl hover:opacity-90 transition" tabindex="0">
+        Use Anonymous Mode (Don’t Save)
+      </button>
+      <button id="consentExit" class="text-sm text-theme-text-subtle underline" tabindex="0">
+        Exit
+      </button>
+    </div>
+    <p class="text-xs text-theme-text-subtle">
+      Retention: 30 days • Right to Erase: “Delete my data” in header • Crisis: Helplines available
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<style>
+  #mainContainer { height: 100vh; overflow: hidden; }
+  #chatBox {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #14b8a6 transparent;
+  }
+  #chatBox::-webkit-scrollbar { width: 10px; }
+  #chatBox::-webkit-scrollbar-track { background: transparent; }
+  #chatBox::-webkit-scrollbar-thumb {
+    background-color: rgba(20, 184, 166, 0.5);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  #chatBox:hover::-webkit-scrollbar-thumb { background-color: rgba(20, 184, 166, 0.8); }
+
+  #sidebar { display: none !important; }
+  #mainContent { margin-left: 0 !important; }
+</style>
+
+<script src="https://unpkg.com/lucide@latest"></script>
 <script>
-  // ======= DOM REFS =======
+  // ===== DOM REFS =====
   const chatBox = document.getElementById('chatBox');
   const input = document.getElementById('message');
   const sendBtn = document.getElementById('sendBtn');
@@ -216,371 +156,291 @@
   const emojiButtons = document.querySelectorAll('.emoji-row button');
   const helpResourcesBtn = document.getElementById('helpResourcesBtn');
 
-  // User dropdown refs
+  // Dropdown
   const userDropdownBtn = document.getElementById('userDropdownBtn');
   const userDropdownMenu = document.getElementById('userDropdownMenu');
   const anonymousCheckbox = document.getElementById('anonymousCheckbox');
   const displayNameSpan = document.getElementById('displayName');
   const eraseBtn = document.getElementById('eraseBtn');
 
-  let currentLang = 'en';   // ✅ always default to English
-  let typingIndicatorId = null;
-  let slowSpinnerTimer = null;
+  let currentLang = 'en';
+  let STORAGE_KEY = null;
 
-  // ======= UTILITIES: local history =======
-  function saveMessageToLocal(obj) {
-    try {
-      const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-      history.push(obj);
-      if (history.length > 50) history.splice(0, history.length - 50);
-      localStorage.setItem('chat_history', JSON.stringify(history));
-    } catch (e) { console.error('saveHistory err', e); }
+  function getLocalISODate() {
+  try {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+  } catch (e) {
+    return new Date().toISOString().slice(0,10); // fallback
   }
-  function restoreChatHistory() {
-    try {
-      const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-      if (!history.length) return;
-      history.forEach(m => appendMessage(m.text, m.sender, m.type || 'text', false));
-      // scroll to bottom
-      chatBox.scrollTop = chatBox.scrollHeight;
-    } catch (e) { console.error('restoreHistory err', e); }
-  }
+}
 
-  // ======= MESSAGE RENDERING HELPERS =======
-  function createMoodCard(emotion, sentiment, tipText) {
-    const card = document.createElement('div');
-    card.className = 'mood-card bg-yellow-50 dark:bg-yellow-900 mood-card msg-fade';
-    // emoji mapping
-    const map = { sad: '☹️', happiness: '😄', happy: '😄', anxious: '😰', calm: '😌', neutral:'😐', anger:'😡' };
-    const emoKey = (emotion||'').toLowerCase();
-    const emoji = map[emoKey] || (emotion ? '🧠' : '');
-    card.innerHTML = `
-      <div class="flex items-center justify-between gap-3 mb-2">
-        <div class="flex items-center gap-3">
-          <div class="avatar bg-white dark:bg-gray-800">${emoji}</div>
-          <div>
-            <div class="font-semibold text-sm">${emotion ? emotion : 'Mood'}</div>
-            <div class="text-xs text-gray-600 dark:text-gray-300">${sentiment ? sentiment : ''}</div>
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <button class="text-xs px-2 py-1 rounded bg-white dark:bg-gray-800 copy-tip-btn" title="Copy tip">Copy</button>
-        </div>
-      </div>
-      <div class="tip text-sm text-gray-800 dark:text-gray-100">${tipText || ''}</div>
-    `;
-    // copy handler
-    card.querySelector('.copy-tip-btn')?.addEventListener('click', () => {
-      navigator.clipboard?.writeText(tipText || '').then(() => showToast('Tip copied'), () => showToast('Copy failed', 'error'));
-    });
-    return card;
-  }
-
-  function parseAndCreateContent(text) {
-    // If it's already an object (rare), handle it
+  // Build storage key per-mode + per-day + per-user
+  async function getStorageKey() {
+    if (STORAGE_KEY) return STORAGE_KEY;
+    const today = getLocalISODate();
     try {
-      // Find JSON substring
-      const jsonMatch = text && text.match ? text.match(/\{[\s\S]*\}/m) : null;
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[0]);
-          // nested response with Tip
-          if (parsed && typeof parsed === 'object') {
-            const resp = parsed.response || parsed;
-            if (typeof resp === 'string') {
-              // string inside response
-              const el = document.createElement('div'); el.textContent = resp; return el;
-            } else if (typeof resp === 'object') {
-              const emotion = resp.Emotion || resp.emotion;
-              const sentiment = resp.Sentiment || resp.sentiment;
-              const tip = resp.Tip || resp.tip || resp.response || JSON.stringify(resp);
-              return createMoodCard(emotion, sentiment, tip);
-            }
-          }
-        } catch(e) { /* not parsable JSON */ }
+      const res = await fetch('/api/consent_status');
+      const data = await res.json();
+      const has_consent = !!data.has_consent;
+      if (has_consent) {
+        const ures = await fetch('/api/get_user_info');
+        const u = await ures.json();
+        const uid = u.user_id || 'guest';
+        STORAGE_KEY = `chat_history_consented_${uid}_${today}`;
+      } else {
+        // Anonymous per-day key; clicking anonymous should clear it (fresh session)
+        STORAGE_KEY = `chat_history_anonymous_${today}`;
       }
-    } catch(e){ console.error(e); }
-
-    // Fallback: detect "Emotion: ... Sentiment: ... Tip: ..." pattern
-    const emo = (text || '').match(/Emotion:\s*(.+?)\s*(?:\n|$)/i);
-    const sent = (text || '').match(/Sentiment:\s*(.+?)\s*(?:\n|$)/i);
-    const tipm = (text || '').match(/Tip:\s*([\s\S]*)/i);
-    if (tipm) {
-      const emotion = emo ? emo[1].trim() : '';
-      const sentiment = sent ? sent[1].trim() : '';
-      const tip = tipm[1].trim();
-      return createMoodCard(emotion, sentiment, tip);
+      return STORAGE_KEY;
+    } catch (e) {
+      // fallback
+      STORAGE_KEY = `chat_history_anonymous_${today}`;
+      return STORAGE_KEY;
     }
-
-    // Default: plain text node
-    const p = document.createElement('div');
-    p.textContent = text;
-    return p;
   }
 
-  function appendMessage(text, sender, type='dialogflow', persist=true) {
-    // sender: 'user' or 'bot'
+  async function persistLocalMessage(obj) {
+    const key = await getStorageKey();
+    const history = JSON.parse(localStorage.getItem(key) || '[]');
+    history.push(obj);
+    if (history.length > 200) history.splice(0, history.length - 200);
+    localStorage.setItem(key, JSON.stringify(history));
+  }
+
+  // Append message UI & optionally persist locally (server persistence is handled server-side when consented)
+  function appendMessage(text, sender, persist=true, ts=null) {
     const row = document.createElement('div');
     row.className = `flex gap-3 items-start ${sender==='user' ? 'justify-end' : 'justify-start'} msg-fade`;
     row.style.alignItems = 'flex-end';
 
-    // avatar
-    const avatarWrap = document.createElement('div');
-    avatarWrap.className = 'flex items-end';
     const avatar = document.createElement('div');
     avatar.className = 'avatar';
     avatar.style.userSelect = 'none';
     avatar.style.fontSize = '16px';
-    if (sender === 'user') {
-      avatar.textContent = '👤';
-    } else {
-      avatar.textContent = '🤖';
-    }
-    // bubble
+    avatar.textContent = sender === 'user' ? '👤' : '🤖';
+
     const bubble = document.createElement('div');
     bubble.className = `${sender==='user' ? 'bg-teal-600 text-white rounded-br-none self-end ml-auto' : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 rounded-bl-none self-start'} p-3 rounded-2xl max-w-[70%] shadow-md`;
 
-    // If bot message likely contains mood/tip JSON, render mood card
-    if (sender !== 'user') {
-      const contentEl = parseAndCreateContent(text);
-      // if contentEl is mood-card, place it without extra bubble background
-      if (contentEl.classList && contentEl.classList.contains('mood-card')) {
-        // remove default bubble styling and put mood card
-        row.innerHTML = ''; // clear
-        const left = document.createElement('div'); left.className = 'flex items-start gap-3';
-        const av = document.createElement('div'); av.className = 'avatar'; av.textContent = '🤖';
-        left.appendChild(av);
-        left.appendChild(contentEl);
-        row.appendChild(left);
-      } else {
-        bubble.appendChild(contentEl);
-        row.appendChild(avatarWrap);
-        avatarWrap.appendChild(avatar);
-        row.appendChild(bubble);
-      }
-    } else {
-      // user message - plain
-      bubble.textContent = text;
+    const textEl = document.createElement('div');
+    textEl.textContent = text;
+    bubble.appendChild(textEl);
+
+    const timestampEl = document.createElement('div');
+    timestampEl.className = `${sender==='user' ? 'text-white/80' : 'text-gray-500 dark:text-gray-300'} text-[10px] mt-1 text-right`;
+    try {
+      const date = ts ? new Date(ts) : new Date();
+      timestampEl.textContent = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+      bubble.appendChild(timestampEl);
+    } catch(e) {}
+
+    if (sender === 'user') {
       row.appendChild(bubble);
-      row.appendChild(avatarWrap);
-      avatarWrap.appendChild(avatar);
+      row.appendChild(avatar);
+    } else {
+      row.appendChild(avatar);
+      row.appendChild(bubble);
     }
 
     chatBox.appendChild(row);
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // persist
-    if (persist) saveMessageToLocal({ sender, text, type, ts: Date.now() });
+    if (persist) persistLocalMessage({ sender, text, ts: ts || Date.now() });
   }
 
-  // ======= Typing indicator + spinner helpers =======
-  function showTyping() {
-    // do not duplicate
-    if (document.getElementById('typingIndicator')) return;
-    const typingDiv = document.createElement('div');
-    typingDiv.id = 'typingIndicator';
-    typingDiv.className = 'typing-indicator flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400 p-2';
-    typingDiv.innerHTML = `<span>Sahaay is typing</span><span></span><span></span><span></span>`;
-    chatBox.appendChild(typingDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-  function hideTyping() {
-    const el = document.getElementById('typingIndicator'); if (el) el.remove();
-  }
-
-  function showSlowSpinner() {
-    sendSpinner.classList.remove('hidden');
-    sendText.style.display = 'none';
-  }
-  function hideSlowSpinner() {
-    sendSpinner.classList.add('hidden');
-    sendText.style.display = '';
-  }
-
-  // ======= Toast =======
-  function showToast(msg, type='success') {
-    const toast = document.getElementById('toast');
-    toast.textContent = msg;
-    toast.classList.add('show');
-    toast.style.backgroundColor = type === 'success' ? '#10B981' : '#EF4444';
-    setTimeout(()=>toast.classList.remove('show'), 3000);
-  }
-
-  // ======= TRANSLATIONS (unchanged) =======
-  async function applyTranslations() {
+  // ====== Server conversation fetch (only when consented) =====
+  async function fetchServerConversationIfConsented() {
     try {
-      const res = await fetch(`/translations?lang=${currentLang}`);
-      const translations = await res.json();
-      document.querySelectorAll('[data-lang]').forEach(el => {
-        const key = el.getAttribute('data-lang');
-        if (translations[key]) {
-          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[key];
-          else if (el.tagName === 'BUTTON') {
-            if (key === 'send_button') el.innerHTML = `<i data-lucide="send"></i> ${translations[key]}`;
-            else el.textContent = translations[key];
-          }
-          else if (el.tagName === 'A') {
-            if (key === 'dashboard_button') el.innerHTML = `<i data-lucide="home"></i> ${translations[key]}`;
-            else if (key === 'delete_data_button') el.innerHTML = `<i data-lucide="trash-2"></i> ${translations[key]}`;
-            else el.textContent = translations[key];
-          } else el.textContent = translations[key];
-        }
-      });
-      document.title = translations['chat_title'] || 'Sahaay-AI Daily Check-in';
-      lucide.createIcons();
-    } catch (err) {
-      console.error("Translation fetch error:", err);
-    }
-  }
+      const cs = await fetch('/api/consent_status');
+      const { has_consent } = await cs.json();
+      const today = getLocalISODate();
+      const key = await getStorageKey();
 
-  // ======= CONSENT (unchanged) =======
-  document.addEventListener("DOMContentLoaded", async () => {
-    try {
-        const res = await fetch("/api/consent_status");
+      if (has_consent) {
+        // fetch conversation messages for today from server
+        const res = await fetch(`/api/fetch_conversation?date=${today}`);
         const data = await res.json();
-
-        if (!data.has_consent && !localStorage.getItem("has_consent")) {
-            // Show modal if not given
-            document.getElementById("consentModal").classList.remove("hidden");
+        if (data.messages && data.messages.length) {
+          // show server messages (and overwrite local cache to avoid duplicates)
+          chatBox.innerHTML = '';
+          data.messages.forEach(m => appendMessage(m.text, m.sender, false, m.ts));
+          // update local cache to match server (fast subsequent loads)
+          const localCache = data.messages.map(m => ({ sender: m.sender, text: m.text, ts: m.ts }));
+          localStorage.setItem(key, JSON.stringify(localCache));
+          // mark greeted so we don't re-greet
+          localStorage.setItem(`greeted_${key}`, today);
+          return true;
         }
-    } catch (err) {
-        console.error("Consent status error:", err);
-    }
-
-    document.getElementById("consentAgree").addEventListener("click", async () => {
-        try {
-            await fetch("/api/set_consent", { method: "POST" });
-            localStorage.setItem("has_consent", "true");
-            document.getElementById("consentModal").classList.add("hidden");
-        } catch (err) {
-            console.error("Set consent error:", err);
-        }
-    });
-});
-
-  // ======= AUTH / USER (unchanged) =======
-  async function fetchUserDisplayName() {
-    try {
-      const res = await fetch('/api/get_user_info');
-      const data = await res.json();
-      displayNameSpan.textContent = data.username || "Guest";
-      anonymousCheckbox.checked = !!data.is_anonymous;
-      dashboardLink.style.display = data.is_anonymous ? 'none' : '';
-      eraseBtn.style.display = data.is_anonymous ? 'none' : '';
-    } catch (err) {
-      console.error(err);
-      displayNameSpan.textContent = "Guest";
-      anonymousCheckbox.checked = true;
-      dashboardLink.style.display = 'none';
-      eraseBtn.style.display = 'none';
+      }
+      return false;
+    } catch (e) {
+      console.error('fetchServerConversationIfConsented err', e);
+      return false;
     }
   }
 
-  // ======= INITIAL STATE =======
-  async function checkInitialState() {
-    try {
-      const hasConsent = localStorage.getItem('hasConsent');
+  // Restore chat history: prefer server messages if consented; fallback to localStorage
+  async function restoreChatHistory() {
+    const key = await getStorageKey();
+    const usedServer = await fetchServerConversationIfConsented();
+    if (usedServer) return;
+    const history = JSON.parse(localStorage.getItem(key) || '[]');
+    history.forEach(m => appendMessage(m.text, m.sender, false, m.ts));
+  }
 
-      if (hasConsent) {
+  // ====== Greeting once per-day per-mode ======
+  async function maybeGreetOncePerDay() {
+    const key = await getStorageKey();
+    const today = getLocalISODate();
+    const greetedKey = `greeted_${key}`;
+    const lastGreet = localStorage.getItem(greetedKey);
+    if (lastGreet === today) return;
+    const res = await fetch(`/daily_checkin_prompt?lang=${currentLang}`);
+    const data = await res.json();
+    if (data.prompt) {
+      appendMessage(data.prompt, 'bot');
+      localStorage.setItem(greetedKey, today);
+    }
+  }
+
+  // ====== Consent state & toggles ======
+  async function updateConsentStatus() {
+    try {
+      const res = await fetch('/api/consent_status');
+      const data = await res.json();
+      if (data.has_consent) {
+        consentModal.classList.add('hidden');
         mainContainer.classList.remove('hidden');
+        consentStatusEl.textContent = "Consent Given ✅";
+        anonymousCheckbox.checked = false;
       } else {
         consentModal.classList.remove('hidden');
+        mainContainer.classList.add('hidden');
+        consentStatusEl.textContent = "Anonymous Mode (No data is saved)";
+        anonymousCheckbox.checked = true;
       }
-
-      dashboardLink.href = `/dashboard?lang=${currentLang}`;
-      await applyTranslations();
-      await fetchUserDisplayName();
-    } catch (err) {
-      console.error("Error initializing page:", err);
+    } catch (e) {
+      console.error('consent status error', e);
+      consentModal.classList.remove('hidden');
+      consentStatusEl.textContent = "Unknown - offline?";
     }
   }
 
-  // ======= EVENT LISTENERS (unchanged mostly) =======
-  // document.getElementById('langSubmit')?.addEventListener('click', async () => {
-  //   const selected = langSelect.value;
-  //   if (!selected) return;
-  //   currentLang = selected;
-  //   localStorage.setItem('selectedLang', currentLang);
-  //   await fetch('/set_language', {
-  //     method:'POST', headers:{'Content-Type':'application/json'},
-  //     body: JSON.stringify({ language: currentLang })
-  //   });
-  //   await applyTranslations();
-  //   consentModal.classList.remove('hidden');
-  // });
-
-  // ======= CONSENT =======
+  // Accept consent via modal
   consentAgreeBtn.addEventListener('click', async () => {
-  try {
-    const res = await fetch('/api/submit_consent', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ consent: true })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      localStorage.setItem('hasConsent', 'true');
-      consentStatusEl.textContent = data.status;
-      consentModal.classList.add('hidden');
-      mainContainer.classList.remove('hidden');
-      await updateConsentStatus();
+    try {
+      await fetch('/api/submit_consent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ consent: true })
+      });
+      // after giving consent, reload so frontend keys and server state match
+      location.reload();
+    } catch (e) { console.error(e); }
+  });
 
-      // ✅ Trigger initial bot message immediately after first consent
-      await fetchPrompt(); 
-    } else showToast('Error saving consent', 'error');
-  } catch { showToast('Error saving consent', 'error'); }
-});
-
-
+  // Anonymous via modal - clear local anon key to ensure fresh chat
   consentAnonBtn.addEventListener('click', async () => {
     try {
-      const res = await fetch('/api/submit_consent', {
+      await fetch('/api/submit_consent', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ consent: false })
       });
-      const data = await res.json();
-      if (data.ok) {
-        localStorage.setItem('hasConsent', 'false');
-        consentStatusEl.textContent = data.status;
-        consentModal.classList.add('hidden');
-        mainContainer.classList.remove('hidden');
-      } else showToast('Error saving consent', 'error');
-    } catch { showToast('Error saving consent', 'error'); }
+      // clear local per-day anon key so next chat is fresh
+      const anonKey = `chat_history_anonymous_${getLocalISODate()}`;
+      localStorage.removeItem(anonKey);
+      location.reload();
+    } catch (e) { console.error(e); }
   });
 
   consentExitBtn.addEventListener('click', () => { window.location.href = 'https://www.google.com'; });
-  resetConsentBtn.addEventListener('click', () => {
-    localStorage.removeItem('hasConsent');
-    window.location.reload();
+
+  // Reset consent (backend + local)
+  resetConsentBtn.addEventListener('click', async () => {
+    try {
+      await fetch('/api/reset_consent', { method: 'POST' });
+      // clear local storage for both modes of today
+      localStorage.removeItem(`chat_history_anonymous_${getLocalISODate()}`);
+      // try to clear consented user key if known
+      const u = await (await fetch('/api/get_user_info')).json();
+      if (u && u.user_id) localStorage.removeItem(`chat_history_consented_${u.user_id}_${getLocalISODate()}`);
+      localStorage.clear(); // full clear is simplest to avoid leftover keys
+      location.reload();
+    } catch (e) { console.error(e); }
   });
 
-  userDropdownBtn.addEventListener('click', () => userDropdownMenu.classList.toggle('hidden'));
-  window.addEventListener('click', e => {
-    if (!userDropdownBtn.contains(e.target) && !userDropdownMenu.contains(e.target)) {
-      userDropdownMenu.classList.add('hidden');
+  // Toggle from user dropdown
+  userDropdownBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (userDropdownMenu.parentNode !== document.body) document.body.appendChild(userDropdownMenu);
+    userDropdownMenu.classList.toggle('hidden');
+    if (!userDropdownMenu.classList.contains('hidden')) {
+      const rect = userDropdownBtn.getBoundingClientRect();
+      userDropdownMenu.style.position = 'fixed';
+      userDropdownMenu.style.top = `${rect.bottom + 8}px`;
+      userDropdownMenu.style.left = `${Math.max(8, Math.min(window.innerWidth - 8 - userDropdownMenu.offsetWidth, rect.right - userDropdownMenu.offsetWidth))}px`;
+      userDropdownMenu.style.zIndex = '20000';
     }
   });
+  window.addEventListener('click', e => {
+    if (!userDropdownBtn.contains(e.target) && !userDropdownMenu.contains(e.target)) userDropdownMenu.classList.add('hidden');
+  });
+
+  // anonymous checkbox in dropdown: when toggled ON => set anonymous (server)
   anonymousCheckbox.addEventListener('change', async () => {
     if (anonymousCheckbox.checked) {
-      await fetch('/api/anonymous_login', { method: 'POST' });
-      showToast('Switched to Anonymous Mode');
-      await fetchUserDisplayName();
+      // set consent false on server
+      await fetch('/api/submit_consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ consent: false }) });
+      // clear local anon key for fresh chat
+      localStorage.removeItem(`chat_history_anonymous_${getLocalISODate()}`);
+      showToast('Anonymous mode enabled — your messages will not be saved.');
+      // reload so UI reflects anonymous
+      location.reload();
     } else {
-      window.location.reload();
+      // turn off anonymous: ask server to set consent = true (user must confirm)
+      // We'll redirect user to consent modal (they must explicitly agree)
+      consentModal.classList.remove('hidden');
     }
   });
 
-  eraseBtn.addEventListener('click', async e => {
+  // show tiny toast
+  function showToast(msg, type='success') {
+    // very lightweight
+    const el = document.createElement('div');
+    el.textContent = msg;
+    el.style.position = 'fixed';
+    el.style.bottom = '20px';
+    el.style.left = '50%';
+    el.style.transform = 'translateX(-50%)';
+    el.style.padding = '8px 12px';
+    el.style.borderRadius = '8px';
+    el.style.color = '#fff';
+    el.style.background = type === 'success' ? '#10B981' : '#EF4444';
+    el.style.zIndex = 99999;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 2500);
+  }
+
+  // Erase stored user check-ins + conversations (calls backend erase)
+  eraseBtn.addEventListener('click', async (e) => {
     e.preventDefault();
-    if (!confirm('This will delete all of your stored check-ins. Continue?')) return;
+    if (!confirm('This will delete all of your stored check-ins and conversations. Continue?')) return;
     try {
-      const res = await fetch('/erase', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const res = await fetch('/erase', { method: 'POST' });
       const data = await res.json();
-      showToast(data.ok ? `Deleted ${data.deleted || 0} entries.` : `Erase error: ${data.error || 'Unknown'}`, data.ok ? 'success':'error');
       if (data.ok) {
-        localStorage.removeItem('chat_history');
+        // clear local caches for today
+        localStorage.removeItem(`chat_history_anonymous_${getLocalISODate()}`);
+        const u = await (await fetch('/api/get_user_info')).json();
+        if (u && u.user_id) localStorage.removeItem(`chat_history_consented_${u.user_id}_${getLocalISODate()}`);
         chatBox.innerHTML = '';
+        showToast(`Deleted ${data.deleted || 0} entries.`, 'success');
+      } else {
+        showToast(`Erase failed: ${data.error || 'unknown'}`, 'error');
       }
-    } catch { showToast('Erase failed. Try again later.', 'error'); }
+    } catch (err) {
+      showToast('Erase failed. Try again later.', 'error');
+      console.error(err);
+    }
   });
 
   // Emoji quick buttons
@@ -588,110 +448,102 @@
     input.value = (input.value ? input.value + ' ' : '') + btn.textContent;
     input.focus();
   }));
+  // ======== Chat sending & display =========
+  let slowSpinnerTimer = null;
+  function showSlowSpinner() { sendSpinner.classList.remove('hidden'); sendText.style.display = 'none'; }
+  function hideSlowSpinner() { sendSpinner.classList.add('hidden'); sendText.style.display = ''; }
 
-  // Help resources button action (in crisis banner)
-  helpResourcesBtn?.addEventListener('click', () => window.open('/resources', '_blank'));
+  function toggleCrisisBanner(show) {
+  if (!crisisBanner) return;
+  if (show) crisisBanner.classList.add('show');
+  else crisisBanner.classList.remove('show');
+}
 
-  // ======= CHAT HELPERS (core behavior retained) =======
-  async function fetchPrompt() {
-    try {
-      // show prompt only when there is no local history (avoid duplication)
-      const history = JSON.parse(localStorage.getItem('chat_history') || '[]');
-      if (history && history.length) return;
-      const res = await fetch(`/daily_checkin_prompt?lang=${currentLang}`);
-      const data = await res.json();
-      if(data.prompt) appendMessage(data.prompt,'bot');
-    } catch(err){ console.error(err); }
-  }
+// Update sendMessage
+async function sendMessage(msg) {
+  if (!msg || !msg.trim()) return;
+  appendMessage(msg, 'user', true);
+  input.value = '';
+  slowSpinnerTimer = setTimeout(showSlowSpinner, 1500);
 
-  async function sendMessage(msg) {
-    if (!msg) return;
-    appendMessage(msg, 'user');
-    input.value = '';
-    chatError.classList.add('hidden');
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, lang: currentLang, local_date: getLocalISODate() })
+    });
+    clearTimeout(slowSpinnerTimer);
+    hideSlowSpinner();
+    const result = await res.json();
 
-    // spinner for slow responses (1.5s)
-    slowSpinnerTimer = setTimeout(() => {
-      showSlowSpinner();
-    }, 1500);
-
-    showTyping();
-    try {
-      const res = await fetch('/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg, lang: currentLang })
-      });
-      const result = await res.json();
-      // clear spinner
-      clearTimeout(slowSpinnerTimer);
-      hideSlowSpinner();
-      hideTyping();
-
-      if (result.ok && result.data) {
-        const responseData = result.data;
-
-        // show crisis banner if backend flagged it
-        if (responseData.crisis_detected) {
-          crisisBanner.classList.remove('hidden');
-        } else {
-          crisisBanner.classList.add('hidden');
-        }
-
-        // append the response (can be plain string or JSON-formatted)
-        if (responseData.response) {
-          appendMessage(responseData.response, 'bot');
-        } else {
-          appendMessage("I'm here to listen. Can you tell me more?", 'bot');
-        }
-      } else {
-        // show server-provided message or generic error
-        const errMsg = result.message || "Failed to send message.";
-        chatError.textContent = errMsg;
-        chatError.classList.remove('hidden');
-        appendMessage(errMsg, 'bot');
-      }
-    } catch (err) {
-      clearTimeout(slowSpinnerTimer);
-      hideSlowSpinner();
-      hideTyping();
-      chatError.textContent = "Failed to send message.";
+    if (result.ok && result.data) {
+      const botText = result.data.response || "I'm here to listen. Can you tell me more?";
+      appendMessage(botText, 'bot', true);
+      toggleCrisisBanner(!!result.data.crisis_detected);
+    } else {
+      const errMsg = result.message || 'Failed to send message.';
+      chatError.textContent = errMsg;
       chatError.classList.remove('hidden');
-      console.error(err);
-      appendMessage("Network error. Please try again.", 'bot');
+      appendMessage(errMsg, 'bot', true);
+      toggleCrisisBanner(false);
     }
+  } catch (err) {
+    clearTimeout(slowSpinnerTimer);
+    hideSlowSpinner();
+    console.error(err);
+    appendMessage("Network error. Please try again.", 'bot', true);
+    toggleCrisisBanner(false);
   }
+}
 
-  // SEND handlers
+// Helpline button
+helpResourcesBtn?.addEventListener('click', () => {
+  window.open('https://www.mentalhealth.gov/get-help', '_blank');
+});
+
   sendBtn.addEventListener('click', () => sendMessage(input.value));
-  input.addEventListener('keypress', e => { if(e.key==='Enter') sendMessage(input.value); });
+  input.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(input.value); });
 
-  // ======= THEME =======
-  const themeToggleBtn = document.getElementById('themeToggleBtn');
-  function updateTheme() {
-    const dark = localStorage.getItem('darkMode')==='enabled';
-    document.documentElement.classList.toggle('dark', dark);
-    const icon = themeToggleBtn.querySelector('i');
-    if (icon) icon.setAttribute('data-lucide', dark?'sun':'moon');
-    lucide.createIcons();
-  }
-  themeToggleBtn.addEventListener('click', () => {
-    const dark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('darkMode', dark?'enabled':'disabled');
-    updateTheme();
-  });
-
-  // ======= INIT on load =======
-  document.addEventListener("DOMContentLoaded", async () => {
-    updateTheme();
-    await checkInitialState();
-    if (!mainContainer.classList.contains('hidden')) {
-      restoreChatHistory();
-      await fetchPrompt();
+  // ======= Fetch user display name and initial flow =======
+  async function fetchUserDisplayName() {
+    try {
+      const res = await fetch('/api/get_user_info');
+      const data = await res.json();
+      displayNameSpan.textContent = data.username || 'Guest';
+      anonymousCheckbox.checked = !!data.is_anonymous;
+      dashboardLink.style.display = data.is_anonymous ? 'none' : '';
+      // erase button visibility only if consent saved
+      eraseBtn.style.display = data.is_anonymous ? 'none' : '';
+    } catch (e) {
+      displayNameSpan.textContent = 'Guest';
+      anonymousCheckbox.checked = true;
+      dashboardLink.style.display = 'none';
+      eraseBtn.style.display = 'none';
     }
+  }
+
+  function cleanupLocalChats(retentionDays = 7) {
+    const nowStr = getLocalISODate();
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('chat_history_')) continue;
+      const parts = key.split('_');
+      const datePart = parts[parts.length - 1];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) continue;
+      const diffDays = Math.round((new Date(nowStr) - new Date(datePart)) / (1000*60*60*24));
+      if (diffDays > retentionDays) localStorage.removeItem(key);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    cleanupLocalChats(7);
+    await updateConsentStatus();
+    // If modal is visible user must choose before we show chat
+    if (!consentModal.classList.contains('hidden')) return;
+    await fetchUserDisplayName();
+    await restoreChatHistory();
+    await maybeGreetOncePerDay();
     lucide.createIcons();
   });
-
 </script>
-</body>
-</html>
+{% endblock %}
