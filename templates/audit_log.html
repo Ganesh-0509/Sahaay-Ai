@@ -1,0 +1,33 @@
+<!-- User Audit Log Page -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audit Log - Sahaay-AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-gray-900 text-white">
+  <div class="container mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6">Account Audit Log</h1>
+    <table class="w-full bg-gray-800 rounded-lg">
+      <thead>
+        <tr>
+          <th class="px-4 py-2">Timestamp</th>
+          <th class="px-4 py-2">Action</th>
+          <th class="px-4 py-2">Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td class="px-4 py-2">{{ log.timestamp }}</td>
+          <td class="px-4 py-2">{{ log.action }}</td>
+          <td class="px-4 py-2">{{ log.details }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <a href="/settings" class="mt-6 inline-block text-cyan-400 underline">Back to Settings</a>
+  </div>
+</body>
+</html>

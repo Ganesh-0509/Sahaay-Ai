@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
     <script>
         tailwind.config = {
             theme: {
@@ -144,9 +145,25 @@
 
 <canvas id="particle-canvas"></canvas>
 
+<!-- Language Selection Modal -->
+<div id="langModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" style="display:none;">
+    <div class="bg-white rounded-lg p-8 text-center">
+        <h2 class="text-2xl font-bold mb-4 text-gray-900">Choose Your Language</h2>
+        <div class="space-x-4">
+            <button class="btn-primary" onclick="setLanguage('en')">English</button>
+            <button class="btn-primary" onclick="setLanguage('ta')">தமிழ்</button>
+            <button class="btn-primary" onclick="setLanguage('hi')">हिन्दी</button>
+            <button class="btn-primary" onclick="setLanguage('te')">తెలుగు</button>
+        </div>
+    </div>
+</div>
+
 <div class="flex min-h-screen">
     <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-theme-panel backdrop-blur-xl border-r border-theme-primary/20 shadow-2xl p-6 flex-col transition-transform duration-500 ease-in-out transform -translate-x-full md:flex md:translate-x-0 z-50">
-        <h2 class="text-3xl font-bold mb-8 text-white">Sahaay AI</h2>
+        <div class="flex items-center mb-8">
+            <img src="/static/logo.svg" alt="Sahaay-AI Logo" class="h-10 w-10 mr-3" loading="lazy">
+            <h2 class="text-3xl font-bold text-white">Sahaay AI</h2>
+        </div>
         <nav class="space-y-2 flex-1">
             <a href="{{ url_for('dashboard') }}" class="sidebar-link {% if request.path == url_for('dashboard') %}sidebar-active{% endif %}">🏠 {{ lang.overview }}</a>
             <a href="{{ url_for('dashboard_mood') }}" class="sidebar-link {% if request.path == url_for('dashboard_mood') %}sidebar-active{% endif %}">📔 {{ lang.mood_journal }}</a>
@@ -168,6 +185,8 @@
         {% block content %}{% endblock %}
     </main>
 </div>
+
+<!-- Language buttons moved to the Settings page to avoid overlapping the UI -->
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

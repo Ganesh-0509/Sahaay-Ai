@@ -151,3 +151,5 @@ docker-compose.override.yml
 
 # Compiled Python packages
 *.pyc
+
+.env

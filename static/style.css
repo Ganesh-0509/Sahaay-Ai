@@ -56,3 +56,12 @@ header h2 {
 
 /* ---------------------- Dark Mode ---------------------- */
 .dark body { background-color: #111827; color: #f3f4f6; }
+
+/* Optimize images for faster load */
+img[loading="lazy"] {
+  filter: blur(2px);
+  transition: filter 0.3s;
+}
+img[loading="lazy"].loaded {
+  filter: none;
+}

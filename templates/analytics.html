@@ -81,7 +81,18 @@
     let moodDistributionChart=null;
     let moodTrendChart=null;
     let allEntries = {}; 
-    const moodColors={happy:"#FFD166",calm:"#10B981",neutral:"#8A6CFF",anxious:"#FF5C8D",sad:"#C576FF",stressed:"#F87171",lonely:"#A99BDB"};
+    const moodColors = {
+        happy: "#FFD166",      // Warm yellow
+        calm: "#4AACEA",       // Peaceful blue
+        neutral: "#8A6CFF",    // Soft purple
+        anxious: "#FF5C8D",    // Deep pink
+        sad: "#6B7280",        // Cool gray
+        stressed: "#F87171",   // Vibrant red
+        lonely: "#A99BDB",     // Muted purple
+        angry: "#FF7C43",      // Orange
+        excited: "#2DD4BF",    // Turquoise
+        content: "#34D399"     // Emerald
+    };
 
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
@@ -115,33 +126,110 @@
                     labels:Object.keys(data.mood_counts), 
                     datasets:[{ 
                         data:Object.values(data.mood_counts), 
-                        backgroundColor:Object.keys(data.mood_counts).map(m=>moodColors[m]||"#8A6CFF"),
+                        backgroundColor:Object.keys(data.mood_counts).map(m=>{
+                            // handle mixed labels like 'mixed:joy(60)/sadness(40)'
+                            let base = m;
+                            if (m && m.startsWith('mixed:')){
+                                const rest = m.split(':')[1] || '';
+                                base = rest.split('/')[0].split('(')[0];
+                            }
+                            return moodColors[base] || "#8A6CFF";
+                        }),
                         borderColor: '#F0EBFF',
-                        borderWidth: 2
+                        borderWidth: 2,
+                        hoverOffset: 15
                     }] 
                 }, 
                 options:{ 
-                    responsive:true, 
+                    responsive:true,
+                    maintainAspectRatio: true,
+                    cutout: '65%',
                     plugins:{ 
                         tooltip:{ 
                             callbacks:{ 
                                 label:function(ctx){ 
                                     const val=ctx.raw; 
                                     const perc = totalCount > 0 ? ((val/totalCount)*100).toFixed(1) : 0; 
-                                    return `${ctx.label}: ${val} (${perc}%)`; 
+                                    // If label is a mixed summary like 'mixed:joy(60)/sadness(40)',
+                                    // display the two top emotions instead of 'mixed:...'
+                                    let rawLabel = ctx.label || '';
+                                    let displayLabel = rawLabel;
+                                    if (rawLabel.startsWith('mixed:')){
+                                        const parts = rawLabel.split(':')[1] || '';
+                                        const two = parts.split('/').map(p=>p.split('(')[0]);
+                                        displayLabel = two.join(' / ');
+                                    }
+                                    return `${displayLabel}: ${val} (${perc}%)`; 
                                 } 
-                            } 
+                            },
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12,
+                            titleFont: {
+                                size: 14
+                            },
+                            bodyFont: {
+                                size: 13
+                            }
                         }, 
                         legend:{
                             position:'bottom',
                             labels: {
                                 color: '#F0EBFF',
+                                padding: 15,
                                 font: {
-                                    size: 12
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            const perc = totalCount > 0 ? ((value/totalCount)*100).toFixed(1) : 0;
+                                            // Parse mixed labels for friendlier legend text
+                                            let displayLabel = label;
+                                            if (label && label.startsWith('mixed:')){
+                                                const parts = label.split(':')[1] || '';
+                                                const two = parts.split('/').map(p=>p.split('(')[0]);
+                                                displayLabel = two.join(' / ');
+                                            }
+                                            return {
+                                                text: `${displayLabel} (${perc}%)`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                strokeStyle: '#F0EBFF',
+                                                lineWidth: 1,
+                                                hidden: false
+                                            };
+                                        });
+                                    }
+                                    return [];
                                 }
+                            },
+                            onClick: function(e, legendItem, legend) {
+                                const index = legendItem.index;
+                                const ci = legend.chart;
+                                ci.toggleDataVisibility(index);
+                                ci.update();
                             }
-                        } 
-                    } 
+                        },
+                        title: {
+                            display: true,
+                            text: 'Mood Distribution',
+                            color: '#F0EBFF',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 20
+                            }
+                        }
+                    },
+                    animation: {
+                        animateScale: true,
+                        animateRotate: true
+                    }
                 } 
             });
 
@@ -153,7 +241,14 @@
             const datasets=[];
             for(const [mood, trend] of Object.entries(data.trend_by_mood)){
                 const dataMap = new Map(trend.map(item=>[item.date,item.sentiment]));
-                datasets.push({ label:mood.charAt(0).toUpperCase() + mood.slice(1), data:sortedDates.map(d=>dataMap.get(d)), borderColor:moodColors[mood]||"#6B7280", backgroundColor:(moodColors[mood]||"#6B7280")+"33", fill:false, tension:0.3, pointRadius:4 });
+                // extract base mood for color if label is mixed
+                let base = mood;
+                if (mood && mood.startsWith('mixed:')){
+                    const rest = mood.split(':')[1] || '';
+                    base = rest.split('/')[0].split('(')[0];
+                }
+                const color = moodColors[base] || "#6B7280";
+                datasets.push({ label:mood.charAt(0).toUpperCase() + mood.slice(1), data:sortedDates.map(d=>dataMap.get(d)), borderColor:color, backgroundColor:color+"33", fill:false, tension:0.3, pointRadius:4 });
             }
             moodTrendChart = new Chart(ctx2,{ 
                 type:'line', 
@@ -237,9 +332,10 @@
                 const timestamp = new Date(entry.timestamp.seconds * 1000);
                 entryDiv.innerHTML = `
                     <div class="flex items-center space-x-2 mb-2">
-                        <span class="font-bold text-lg capitalize text-theme-text-main">${entry.mood}</span>
+                        <span class="font-bold text-lg capitalize text-theme-text-main">${entry.mood_label || "Neutral"}</span>
                         <span class="text-theme-text-subtle text-sm">${timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                        <span class="text-sm rounded-full px-2 py-0.5 text-white shadow-md" style="background-color: ${moodColors[entry.mood.toLowerCase()] || "#8A6CFF"};">Sentiment: ${entry.sentiment}</span>
+                        <span class="text-sm rounded-full px-2 py-0.5 text-white shadow-md" 
+                        style="background-color: ${moodColors[entry.mood.toLowerCase()] || "#8A6CFF"};">Sentiment: ${entry.sentiment}</span>
                     </div>
                     <p class="text-theme-text-main">${entry.text || 'No text provided.'}</p>`;
                 modalEntries.appendChild(entryDiv);

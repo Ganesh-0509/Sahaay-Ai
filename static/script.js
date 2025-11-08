@@ -43,3 +43,62 @@ if(darkModeBtn){
         localStorage.setItem('darkMode', document.documentElement.classList.contains('dark') ? 'enabled' : 'disabled');
     });
 }
+
+// Language selection modal and dynamic translation loading
+function setLanguage(lang) {
+  localStorage.setItem('userLang', lang);
+  document.getElementById('langModal').style.display = 'none';
+  location.reload();
+}
+
+function getLanguage() {
+  return localStorage.getItem('userLang') || 'en';
+}
+
+function detectAndSetLanguage() {
+  const lang = getLanguage();
+  fetch(`/translations/${lang}.json`)
+    .then(res => res.json())
+    .then(dict => {
+      for (const key in dict) {
+        const el = document.querySelector(`[data-i18n='${key}']`);
+        if (el) el.textContent = dict[key];
+      }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!localStorage.getItem('userLang')) {
+    document.getElementById('langModal').style.display = 'flex';
+  } else {
+    document.getElementById('langModal').style.display = 'none';
+  }
+  detectAndSetLanguage();
+});
+
+function changeLanguage(lang) {
+  localStorage.setItem('userLang', lang);
+  fetch('/set_language/' + lang)
+    .then(() => location.reload());
+}
+
+// Lazy load images
+function lazyLoadImages() {
+  const images = document.querySelectorAll('img[loading="lazy"]');
+  images.forEach(img => {
+    if ('IntersectionObserver' in window) {
+      let observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.src = entry.target.dataset.src;
+            obs.unobserve(entry.target);
+          }
+        });
+      });
+      observer.observe(img);
+    } else {
+      img.src = img.dataset.src;
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', lazyLoadImages);
