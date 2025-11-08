@@ -56,6 +56,7 @@ header h2 {
 
 /* ---------------------- Dark Mode ---------------------- */
 .dark body { background-color: #111827; color: #f3f4f6; }
+<<<<<<< HEAD
 
 /* Optimize images for faster load */
 img[loading="lazy"] {
@@ -65,3 +66,5 @@ img[loading="lazy"] {
 img[loading="lazy"].loaded {
   filter: none;
 }
+=======
+>>>>>>> 7b300e3842ffa484110cb5866d3d9adfde14f13b

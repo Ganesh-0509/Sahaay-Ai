@@ -43,6 +43,7 @@ if(darkModeBtn){
         localStorage.setItem('darkMode', document.documentElement.classList.contains('dark') ? 'enabled' : 'disabled');
     });
 }
+<<<<<<< HEAD
 
 // Language selection modal and dynamic translation loading
 function setLanguage(lang) {
@@ -102,3 +103,5 @@ function lazyLoadImages() {
   });
 }
 document.addEventListener('DOMContentLoaded', lazyLoadImages);
+=======
+>>>>>>> 7b300e3842ffa484110cb5866d3d9adfde14f13b

@@ -21,6 +21,7 @@
   "consent_status_title": "Consent Status",
   "consent_status_loading": "Loading...",
   "crisis_banner": "⚠️ Crisis detected! Please seek help immediately."
+<<<<<<< HEAD
   ,
   "overview": "Overview",
   "mood_journal": "Mood Journal",
@@ -51,4 +52,6 @@
   "save_changes": "Save Changes",
   "delete_account": "Delete Account",
   "delete_account_confirm": "Permanently delete your account and all related data. This action cannot be undone."
+=======
+>>>>>>> 7b300e3842ffa484110cb5866d3d9adfde14f13b
 }
