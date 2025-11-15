@@ -30,13 +30,22 @@ class GeminiAgent:
             
         self.system_prompt = SYSTEM_PROMPT
 
-    def get_response(self, message, history=None):
+    def get_response(self, message, history=None, language='en'):
         try:
             # Extract message content
             message_text = message.get('content', message) if isinstance(message, dict) else message
             
+            # Language-specific instruction
+            lang_instructions = {
+                'hi': "\n\n**IMPORTANT: Respond in Hindi (हिन्दी) language.**",
+                'ta': "\n\n**IMPORTANT: Respond in Tamil (தமிழ்) language.**",
+                'te': "\n\n**IMPORTANT: Respond in Telugu (తెలుగు) language.**",
+                'en': ""
+            }
+            lang_instruction = lang_instructions.get(language, "")
+            
             # Create the prompt
-            prompt = f"{self.system_prompt}\n\nUser: {message_text}"
+            prompt = f"{self.system_prompt}{lang_instruction}\n\nUser: {message_text}"
             
             # Generate response using the new API format
             response = self.client.models.generate_content(

@@ -53,7 +53,7 @@ def chat():
 
     try:
         gemini = GeminiAgent(api_key=api_key)
-        response_text = gemini.get_response(message)
+        response_text = gemini.get_response(message, language=lang)
 
     except Exception as e:
         print("Gemini error:", str(e))

@@ -171,7 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const result = await res.json();
-            if (result.ok) showMessage("Settings updated!");
+            if (result.ok) {
+                showMessage("Settings updated!");
+                // Reload page after 1 second to apply language change
+                setTimeout(() => window.location.reload(), 1000);
+            }
             else showMessage(result.message || "Update failed.", "error");
 
         } catch {

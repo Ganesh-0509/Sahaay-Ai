@@ -466,6 +466,10 @@ def home_data():
         return jsonify({"error": "Database not initialized"}), 500
     user_id = current_user.id
     period = request.args.get('period', 'last10')
+    
+    from translations.translation_utils import translate_mood
+    user_lang = session.get('language', 'en')
+    
     try:
         all_checkins_docs = db.collection(f"users/{user_id}/checkins").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
         all_timestamps = [doc.to_dict().get("timestamp") for doc in all_checkins_docs]
@@ -484,9 +488,11 @@ def home_data():
         for doc in filtered_docs:
             d = doc.to_dict()
             ts = d.get("timestamp")
-            recent.append({"date": format_timestamp(ts), "mood": d.get("mood_label", d.get("mood_dominant", "N/A"))})
+            mood_raw = d.get("mood_label", d.get("mood_dominant", "N/A"))
+            mood_translated = translate_mood(mood_raw, user_lang)
+            recent.append({"date": format_timestamp(ts), "mood": mood_translated})
             if d.get("helpful"):
-                helpful.append({"date": format_timestamp(ts), "tip": d.get("coping_tip", ""), "mood": d.get("mood_label", d.get("mood_dominant", "N/A"))})
+                helpful.append({"date": format_timestamp(ts), "tip": d.get("coping_tip", ""), "mood": mood_translated})
 
         latest_mood = recent[0]["mood"] if recent else "No data yet."
         result = {"streak": streak, "recent": recent, "helpful": helpful, "quote": "Keep going, you're stronger than you think! 🌱", "mood": latest_mood}
@@ -695,7 +701,9 @@ def get_settings():
         return jsonify({
             "ok": True,
             "username": settings.get("name"),
-            "dailyReminder": settings.get("daily_reminder", False)
+            "language": settings.get("language", "en"),
+            "dailyReminder": settings.get("daily_reminder", False),
+            "push_token": settings.get("push_token", "")
         }), 200
     except Exception as e:
         return jsonify({"ok": False, "message": f"Failed to get user settings: {e}"}), 500
@@ -713,6 +721,10 @@ def update_settings():
     updates = {}
     if "username" in data:
         updates["name"] = data["username"]
+    if "language" in data:
+        updates["language"] = data["language"]
+        # Also update session immediately
+        session['language'] = data["language"]
     if "dailyReminder" in data:
         updates["daily_reminder"] = data["dailyReminder"]
     if "pushToken" in data:

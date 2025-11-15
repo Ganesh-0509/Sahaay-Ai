@@ -17,6 +17,18 @@ def login():
         # Add password check logic here
         if user:
             login_user(user)
+            
+            # Load user's language preference from Firestore
+            try:
+                user_doc = db.collection('users').document(user.id).get()
+                if user_doc.exists:
+                    user_data = user_doc.to_dict()
+                    user_lang = user_data.get('language', 'en')
+                    session['language'] = user_lang
+            except Exception as e:
+                print(f"Failed to load user language: {e}")
+                session['language'] = 'en'
+            
             flash('Logged in successfully!', 'success')
             return redirect(url_for('dashboard.dashboard'))
         else:
@@ -59,6 +71,10 @@ def signup():
                 flash('Account creation failed. Please try again.', 'danger')
                 return render_template('signup.html', form=form)
             login_user(new_user)
+            
+            # Set default language in session for new users
+            session['language'] = 'en'
+            
             flash('Account created successfully!', 'success')
             return redirect(url_for('dashboard.dashboard'))
     return render_template('signup.html', form=form)

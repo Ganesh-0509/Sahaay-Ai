@@ -29,3 +29,18 @@ def load_translation(lang_code):
 def get_user_translations():
     user_language = session.get('language', 'en')
     return load_translation(user_language)
+
+# Translates a mood label to the user's language
+def translate_mood(mood_key, lang_code=None):
+    if not lang_code:
+        lang_code = session.get('language', 'en')
+    
+    # Load translation for the language
+    translations = TRANSLATIONS.get(lang_code, TRANSLATIONS['en'])
+    
+    # Get mood translations
+    moods = translations.get('moods', {})
+    
+    # Return translated mood or original if not found
+    mood_lower = mood_key.lower() if mood_key else "neutral"
+    return moods.get(mood_lower, mood_key)

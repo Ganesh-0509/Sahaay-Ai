@@ -151,6 +151,22 @@
   "failed_delete_message": "Erase failed.",
   "anonymous_enabled": "Anonymous mode enabled — your messages will not be saved.",
   "network_error": "Network error. Please try again.",
-  "crisis_banner_text": "If you or someone you know is in crisis, please seek immediate help."
+  "crisis_banner_text": "If you or someone you know is in crisis, please seek immediate help.",
+
+  "moods": {
+    "joy": "Joy",
+    "sadness": "Sadness",
+    "anger": "Anger",
+    "fear": "Fear",
+    "neutral": "Neutral",
+    "happy": "Happy",
+    "sad": "Sad",
+    "angry": "Angry",
+    "anxious": "Anxious",
+    "calm": "Calm",
+    "excited": "Excited",
+    "confused": "Confused",
+    "tired": "Tired"
+  }
 
 }

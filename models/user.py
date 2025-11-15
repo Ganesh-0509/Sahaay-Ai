@@ -40,7 +40,8 @@ class User(UserMixin):
                 'password_hash': password_hash,
                 'created_at': None,
                 'push_token': None,
-                'daily_reminder': False
+                'daily_reminder': False,
+                'language': 'en'
             })
             print(f"User created successfully: {user_id} ({email})")
             return User(user_id, email, name)
