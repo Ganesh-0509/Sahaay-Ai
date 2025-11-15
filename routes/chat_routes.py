@@ -67,11 +67,21 @@ def chat():
             }
         })
 
-    # Ensure JSON parsing
+    # Ensure JSON parsing and strip triple quotes if present
+    cleaned_response = response_text.strip()
+
+    # Strip Python triple quotes
+    if cleaned_response.startswith('"""') and cleaned_response.endswith('"""'):
+        cleaned_response = cleaned_response[3:-3].strip()
+
+    # Strip Markdown code blocks (```json ... ```)
+    cleaned_response = re.sub(r"^```(?:json)?", "", cleaned_response, flags=re.IGNORECASE).strip()
+    cleaned_response = re.sub(r"```$", "", cleaned_response).strip()
+
     try:
-        response_data = json.loads(response_text)
-    except:
-        response_data = {"response": response_text}
+        response_data = json.loads(cleaned_response)
+    except Exception:
+        response_data = {"response": cleaned_response}
 
     # Crisis detection uses real API key
     crisis_agent = CrisisAgent(api_key=api_key)
@@ -84,6 +94,7 @@ def chat():
     # Save check-in to Firestore
     from flask import current_app
     from datetime import datetime, timezone
+    from google.cloud import firestore
     from app import db
     
     if db:
@@ -92,6 +103,7 @@ def chat():
             mood_list, mood_label = parse_final_mood(mood)
             dominant = mood_list[0] if mood_list else "neutral"
 
+            # Use consistent date format across the application
             today = datetime.now(timezone.utc).date()
             today_str = today.strftime("%Y-%m-%d")
             checkins_ref = db.collection(f"users/{user_id}/checkins")
@@ -119,9 +131,10 @@ def chat():
                     "language": lang,
                     "last_text": message,
                     "coping_tip": coping_tip,
-                    "timestamp": datetime.now(timezone.utc)
+                    "timestamp": firestore.SERVER_TIMESTAMP,
+                    "updated_at": firestore.SERVER_TIMESTAMP
                 })
-                print(f"Updated check-in for user {user_id} on {today_str}")
+                print(f"✓ Updated check-in for user {user_id} on {today_str}")
             else:
                 # Create new check-in for today
                 checkins_ref.add({
@@ -135,9 +148,10 @@ def chat():
                     "last_text": message,
                     "coping_tip": coping_tip,
                     "helpful": False,
-                    "timestamp": datetime.now(timezone.utc)
+                    "timestamp": firestore.SERVER_TIMESTAMP,
+                    "created_at": firestore.SERVER_TIMESTAMP
                 })
-                print(f"Created check-in for user {user_id} on {today_str}")
+                print(f"✓ Created check-in for user {user_id} on {today_str}")
         except Exception as e:
             print(f"Failed to save check-in for user {user_id}:", e)
             import traceback

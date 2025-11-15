@@ -9,6 +9,11 @@ auth_bp = Blueprint('auth', __name__)
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.dashboard'))
+    
+    # Clear any lingering flash messages on GET request
+    if request.method == 'GET':
+        session.pop('_flashes', None)
+    
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -39,6 +44,11 @@ def login():
 def signup():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.dashboard'))
+    
+    # Clear any lingering flash messages on GET request
+    if request.method == 'GET':
+        session.pop('_flashes', None)
+    
     form = SignupForm(request.form)
     if request.method == 'POST':
         if not form.validate():

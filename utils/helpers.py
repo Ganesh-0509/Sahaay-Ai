@@ -14,14 +14,40 @@ def firestore_to_datetime(ts):
         return ts
     return None
 
-def calculate_streak(timestamps):
-    dates = {firestore_to_datetime(ts).date() for ts in timestamps if firestore_to_datetime(ts)}
-    if not dates: return 0
-    today = datetime.utcnow().date()
+def calculate_streak(docs):
+    """Calculate consecutive days streak from check-in documents"""
+    if not docs:
+        return 0
+    
+    # Extract dates from documents
+    dates = set()
+    for doc in docs:
+        if hasattr(doc, 'to_dict'):
+            data = doc.to_dict()
+        else:
+            data = doc
+        
+        date_str = data.get('date', '')
+        if date_str:
+            try:
+                # Parse YYYY-MM-DD format
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+                dates.add(date_obj)
+            except ValueError:
+                continue
+    
+    if not dates:
+        return 0
+    
+    # Calculate streak from today backwards
+    today = datetime.now(timezone.utc).date()
     streak = 0
-    while today in dates:
+    current_date = today
+    
+    while current_date in dates:
         streak += 1
-        today -= timedelta(days=1)
+        current_date -= timedelta(days=1)
+    
     return streak
 
 def get_most_frequent_words(docs, num_words=30):

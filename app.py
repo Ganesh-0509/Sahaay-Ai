@@ -123,6 +123,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
+# Disable the default "Please log in to access this page" message
+login_manager.login_message = None
 
 
 @login_manager.user_loader
@@ -597,44 +599,110 @@ def analytics_data():
         docs_stream = ref.order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
     docs = [d.to_dict() for d in docs_stream]
 
+    # Map each checkin to a single dominant mood (avoid mixed labels in analytics)
     mood_counts = Counter()
     sentiments_by_mood_and_date = {}
     entries_by_date = {}
+
+    def _normalize_mood_name(m: str) -> str:
+        if not m:
+            return 'neutral'
+        m = m.strip().lower()
+        mapping = {
+            'joy': 'happy',
+            'sadness': 'sad',
+            'anger': 'angry',
+            'fear': 'anxious',
+            'mixed': 'normal'
+        }
+        return mapping.get(m, m)
+
     for d in docs:
-        # prefer stored mood_list; fallback to mood_label/mood_dominant
-        moods = d.get("mood_list") or [d.get("mood_dominant")] or [d.get("mood_label")] or ["neutral"]
-        # ensure we have flat string mood names
-        flat_moods = []
-        for m in moods:
-            if not m:
-                continue
-            # if mood label like "Joy / Sadness" break it into parts
-            if isinstance(m, str) and "/" in m:
-                parts = [p.strip().lower() for p in m.split("/") if p.strip()]
-                flat_moods.extend(parts)
-            else:
-                flat_moods.append(str(m).strip().lower())
-        if not flat_moods:
-            flat_moods = ["neutral"]
+        # collect moods for this entry (split mixed labels into components)
+        moods = []
+        ml = d.get('mood_list')
+        if isinstance(ml, (list, tuple)) and ml:
+            moods = [str(x).strip() for x in ml if x]
+        else:
+            # try mood_label or mood_dominant
+            label = d.get('mood_label') or d.get('mood_dominant')
+            if isinstance(label, str) and label:
+                lab = label.strip()
+                # handle patterns like 'mixed:joy(60)/sadness(40)'
+                if lab.lower().startswith('mixed:'):
+                    parts = lab.split(':', 1)[1]
+                    parts = parts.split('/')
+                    moods = [re.sub(r"\(.*?\)", '', p).strip() for p in parts if p.strip()]
+                elif lab.lower().strip() == 'mixed':
+                    # plain 'mixed' label - treat as normal/healthy bucket
+                    moods = ['normal']
+                elif '/' in lab:
+                    parts = lab.split('/')
+                    moods = [p.strip() for p in parts if p.strip()]
+                else:
+                    moods = [lab]
 
-        avg_sentiment = float(d.get("avg_sentiment") or 0)
-        ts = d.get("timestamp")
-        date_str = ts.strftime("%Y-%m-%d") if ts else "N/A"
+        # normalize and fallback
+        moods = [_normalize_mood_name(m.lower()) for m in moods if m]
+        if not moods:
+            moods = ['neutral']
 
-        # increment counts for each parsed mood (mixed entries contribute to both)
-        for mood in flat_moods:
+        avg_sentiment = float(d.get('avg_sentiment') or 0)
+        ts = d.get('timestamp')
+        # prefer 'date' string if present, else fallback to timestamp
+        date_str = d.get('date')
+        if not date_str:
+            try:
+                if ts and hasattr(ts, 'strftime'):
+                    date_str = ts.strftime('%Y-%m-%d')
+                elif isinstance(ts, datetime):
+                    date_str = ts.strftime('%Y-%m-%d')
+                else:
+                    date_str = 'N/A'
+            except Exception:
+                date_str = 'N/A'
+
+        # count each mood component (mixed entries contribute to their parts)
+        for mood in moods:
             mood_counts[mood] += 1
             sentiments_by_mood_and_date.setdefault(mood, {}).setdefault(date_str, []).append(avg_sentiment)
 
-        entries_by_date.setdefault(date_str, []).append(d)
+        # normalize entry for display (use first mood as label)
+        entry_copy = dict(d)
+        entry_copy['mood_label'] = moods[0].capitalize() if moods else 'Neutral'
+        entry_copy['mood_dominant'] = moods[0] if moods else 'neutral'
+        entries_by_date.setdefault(date_str, []).append(entry_copy)
 
-    trend_by_mood = {
+    # Build trend only for moods we will show (we'll trim to top 3 below)
+    full_trend_by_mood = {
         mood: [
             {"date": date, "sentiment": sum(vals) / len(vals)}
             for date, vals in sorted(dates.items())
         ]
         for mood, dates in sentiments_by_mood_and_date.items()
     }
+
+    # Keep only top 3 moods by count for analytics display
+    top_moods = [m for m, _ in mood_counts.most_common(3)]
+    # Group all other moods into a 'normal' (Normal/Healthy) bucket
+    other_moods = [m for m in mood_counts.keys() if m not in top_moods]
+    other_count = sum(mood_counts[m] for m in other_moods)
+    filtered_mood_counts = {m: mood_counts[m] for m in top_moods}
+    if other_count > 0:
+        filtered_mood_counts['normal'] = other_count
+
+    # Build trend for top moods and aggregate others into 'normal'
+    trend_by_mood = {m: full_trend_by_mood.get(m, []) for m in top_moods}
+    # aggregate other moods per date into normal trend
+    normal_dates = {}
+    for m in other_moods:
+        for date, vals in sentiments_by_mood_and_date.get(m, {}).items():
+            normal_dates.setdefault(date, []).extend(vals)
+    if normal_dates:
+        trend_by_mood['normal'] = [
+            {"date": date, "sentiment": (sum(vals) / len(vals)) if vals else 0}
+            for date, vals in sorted(normal_dates.items())
+        ]
 
     most_frequent_words, word_moods = get_most_frequent_words(docs)
     top_tips = [
@@ -646,12 +714,17 @@ def analytics_data():
     avg_sentiment = round(
         sum(d.get("avg_sentiment", 0) for d in docs) / max(total_checkins, 1), 2
     )
-    most_common_mood = mood_counts.most_common(1)[0][0].capitalize() if mood_counts else "Neutral"
+    # choose most common mood from filtered counts (includes 'normal' bucket)
+    if filtered_mood_counts:
+        most_common_key = max(filtered_mood_counts.items(), key=lambda x: x[1])[0]
+    else:
+        most_common_key = None
+    most_common_mood = most_common_key if most_common_key else (mood_counts.most_common(1)[0][0] if mood_counts else "neutral")
     insights = f"You’ve checked in {total_checkins} times."
     if total_checkins > 0:
         insights += f" Your top mood is {most_common_mood}."
     return jsonify({
-        "mood_counts": dict(mood_counts),
+        "mood_counts": filtered_mood_counts,
         "trend_by_mood": trend_by_mood,
         "most_frequent_words": most_frequent_words,
         "top_tips": top_tips,
@@ -664,6 +737,211 @@ def analytics_data():
         },
         "insights": insights,
     })
+
+
+@app.route("/api/previous_day_summary", methods=["GET"])
+@login_required
+def previous_day_summary():
+    user_id = current_user.id
+    # Get yesterday's date in UTC
+    today = datetime.now(UTC).date()
+    yesterday = today - timedelta(days=1)
+    yesterday_str = yesterday.strftime("%Y-%m-%d")
+    
+    try:
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        # Query by date string for consistency with our data model
+        docs = checkins_ref.where("date", "==", yesterday_str).stream()
+        checkins = [doc.to_dict() for doc in docs]
+        
+        if not checkins:
+            return jsonify({"ok": True, "summary": "No check-ins for the previous day."})
+        
+        # Concatenate all text fields for summarization
+        all_text = "\n".join([c.get("last_text", c.get("text", "")) for c in checkins if c.get("last_text") or c.get("text")])
+        if not all_text.strip():
+            return jsonify({"ok": True, "summary": "No text data to summarize for the previous day."})
+        
+        # Use Gemini for summary
+        summary = None
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=f"Summarize the following daily check-in notes in 2-3 sentences:\n{all_text}"
+            )
+            summary = getattr(response, "text", "").strip()
+        except Exception as e:
+            print("Gemini summarization failed:", e)
+        
+        if not summary:
+            # Fallback: simple TextBlob summary (first 2 sentences)
+            blob = TextBlob(all_text)
+            summary = " ".join(str(s) for s in blob.sentences[:2])
+        
+        return jsonify({"ok": True, "summary": summary})
+    except Exception as e:
+        print("Previous day summary error:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/mood_insights", methods=["GET"])
+@login_required
+def mood_insights():
+    user_id = current_user.id
+    days = int(request.args.get('days', 30))
+    
+    try:
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        docs = checkins_ref.where("timestamp", ">=", cutoff).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+        checkins = [doc.to_dict() for doc in docs]
+        
+        if not checkins:
+            return jsonify({"ok": False, "message": "No check-ins found"})
+        
+        # Calculate best and worst day
+        best_day = None
+        worst_day = None
+        best_sentiment = -2
+        worst_sentiment = 2
+        
+        for c in checkins:
+            sentiment = c.get('avg_sentiment', 0)
+            date_str = c.get('date', 'N/A')
+            
+            if sentiment > best_sentiment:
+                best_sentiment = sentiment
+                best_day = {"date": date_str, "sentiment": round(sentiment, 2)}
+            
+            if sentiment < worst_sentiment:
+                worst_sentiment = sentiment
+                worst_day = {"date": date_str, "sentiment": round(sentiment, 2)}
+        
+        return jsonify({
+            "ok": True,
+            "best_day": best_day,
+            "worst_day": worst_day
+        })
+    except Exception as e:
+        print("Mood insights error:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/mood_weekly_summary", methods=["GET"])
+@login_required
+def mood_weekly_summary():
+    user_id = current_user.id
+    
+    try:
+        # Get last 7 days of check-ins
+        cutoff = datetime.now(UTC) - timedelta(days=7)
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        docs = checkins_ref.where("timestamp", ">=", cutoff).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+        checkins = [doc.to_dict() for doc in docs]
+        
+        if not checkins:
+            return jsonify({"ok": True, "summary": "No check-ins for the past week."})
+        
+        # Concatenate all text for summarization
+        all_text = "\n".join([c.get("last_text", c.get("text", "")) for c in checkins if c.get("last_text") or c.get("text")])
+        if not all_text.strip():
+            return jsonify({"ok": True, "summary": "No text data to summarize for the week."})
+        
+        # Use Gemini for summary
+        summary = None
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=f"Summarize the following weekly check-in notes in 3-4 sentences, highlighting emotional patterns:\n{all_text}"
+            )
+            summary = getattr(response, "text", "").strip()
+        except Exception as e:
+            print("Gemini weekly summarization failed:", e)
+        
+        if not summary:
+            # Fallback: simple summary
+            blob = TextBlob(all_text)
+            summary = " ".join(str(s) for s in blob.sentences[:3])
+        
+        return jsonify({"ok": True, "summary": summary})
+    except Exception as e:
+        print("Weekly summary error:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/mood_themes", methods=["GET"])
+@login_required
+def mood_themes():
+    user_id = current_user.id
+    days = int(request.args.get('days', 30))
+    ai_mode = request.args.get('ai', 'false').lower() == 'true'
+    
+    try:
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        docs = checkins_ref.where("timestamp", ">=", cutoff).order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+        checkins = [doc.to_dict() for doc in docs]
+        
+        if not checkins:
+            return jsonify({"ok": False, "message": "No check-ins found"})
+        
+        if ai_mode:
+            # Use Gemini to generate AI themes
+            all_text = "\n".join([c.get("last_text", c.get("text", "")) for c in checkins if c.get("last_text") or c.get("text")])
+            if not all_text.strip():
+                return jsonify({"ok": True, "themes_ai": ["No text data available"]})
+            
+            try:
+                response = client.models.generate_content(
+                    model=MODEL_NAME,
+                    contents=f"Analyze these mental health check-in notes and identify 5-6 recurring themes or patterns. Return only a simple list of themes:\n{all_text}"
+                )
+                themes_text = getattr(response, "text", "").strip()
+                # Parse the response into a list
+                themes_ai = [line.strip().lstrip('•-*123456789. ') for line in themes_text.split('\n') if line.strip()]
+                return jsonify({"ok": True, "themes_ai": themes_ai[:6]})
+            except Exception as e:
+                print("AI themes generation failed:", e)
+                return jsonify({"ok": False, "error": "AI themes unavailable"})
+        else:
+            # Extract keyword themes from text
+            from collections import Counter
+            import re
+            
+            all_words = []
+            mood_by_word = {}
+            
+            for c in checkins:
+                text = c.get("last_text", c.get("text", ""))
+                mood = c.get("mood_dominant", "neutral")
+                if not text:
+                    continue
+                
+                words = re.findall(r'\b\w{4,}\b', text.lower())
+                for word in words:
+                    all_words.append(word)
+                    if word not in mood_by_word:
+                        mood_by_word[word] = []
+                    mood_by_word[word].append(mood)
+            
+            # Get most common words
+            word_counts = Counter(all_words)
+            # Filter out common stop words
+            stop_words = {'that', 'this', 'with', 'have', 'been', 'were', 'will', 'your', 'from', 'they', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'make', 'like', 'time', 'just', 'know', 'take', 'people', 'into', 'year', 'good', 'some', 'could', 'them', 'than', 'other', 'then', 'more', 'these', 'want', 'many', 'must'}
+            
+            themes = []
+            for word, count in word_counts.most_common(20):
+                if word not in stop_words and count > 1:
+                    # Find most common mood associated with this word
+                    mood_list = mood_by_word.get(word, [])
+                    if mood_list:
+                        most_common_mood = Counter(mood_list).most_common(1)[0][0]
+                        themes.append({"keyword": word, "count": count, "associated_mood": most_common_mood})
+            
+            return jsonify({"ok": True, "themes": themes[:10]})
+    except Exception as e:
+        print("Mood themes error:", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/mark_helpful", methods=["POST"])

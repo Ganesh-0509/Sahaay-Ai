@@ -78,9 +78,7 @@
 
 
 <!-- INSIGHTS -->
-<section class="card animated-item mb-8" style="animation-delay: 0.8s;
-    background: linear-gradient(135deg, rgba(138, 108, 255, 0.1), rgba(197, 118, 255, 0.1));
-    border: 1px solid rgba(138, 108, 255, 0.3);">
+<section class="card animated-item mb-8" style="animation-delay: 0.8s;">
     <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.insights }}</h2>
     <p id="insightsBox" class="text-theme-text-main italic">{{ lang.insights_placeholder }}</p>
 </section>
@@ -120,8 +118,37 @@
         lonely: "#A99BDB",     // Muted purple
         angry: "#FF7C43",      // Orange
         excited: "#2DD4BF",    // Turquoise
-        content: "#34D399"     // Emerald
+        content: "#34D399",    // Emerald
+        normal: "#60D394"      // Normal / Healthy (green)
     };
+
+    // Map internal mood keys to friendly display names
+    const moodDisplayNames = {
+        normal: 'Normal',
+        happy: 'Happy',
+        calm: 'Calm',
+        neutral: 'Neutral',
+        anxious: 'Anxious',
+        sad: 'Sad',
+        stressed: 'Stressed',
+        lonely: 'Lonely',
+        angry: 'Angry',
+        excited: 'Excited',
+        content: 'Content'
+    };
+
+    function mapMoodLabel(rawLabel){
+        if(!rawLabel) return '';
+        // Normalize any mixed labels to the 'Normal' display name
+        if(typeof rawLabel === 'string'){
+            const lower = rawLabel.toLowerCase().trim();
+            if(lower === 'mixed' || lower.startsWith('mixed:')){
+                return moodDisplayNames['normal'];
+            }
+        }
+        const key = String(rawLabel).toLowerCase();
+        return moodDisplayNames[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+    }
 
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
@@ -138,13 +165,20 @@
     async function fetchAnalytics(){
         const period = document.getElementById('filterSelect').value;
         try{
-            const res = await fetch(`/api/analytics_data?period=${period}`);
+            const res = await fetch(`/api/analytics_data?period=${encodeURIComponent(period)}`);
             const data = await res.json();
             allEntries = data.entries_by_date;
 
-            document.getElementById("kpiAvgSentiment").textContent=data.kpis.avg_sentiment;
-            document.getElementById("kpiMostMood").textContent=data.kpis.most_common_mood;
-            document.getElementById("kpiTotalCheckins").textContent=data.kpis.total_checkins;
+            if (!data || !data.kpis) {
+                document.getElementById("kpiAvgSentiment").textContent = "--";
+                document.getElementById("kpiMostMood").textContent = "--";
+                document.getElementById("kpiTotalCheckins").textContent = "0";
+                return;
+            }
+
+            document.getElementById("kpiAvgSentiment").textContent = data.kpis.avg_sentiment;
+            document.getElementById("kpiMostMood").textContent = mapMoodLabel(data.kpis.most_common_mood);
+            document.getElementById("kpiTotalCheckins").textContent = data.kpis.total_checkins;
 
             const ctx1=document.getElementById('moodDistributionChart').getContext('2d');
             if(moodDistributionChart) moodDistributionChart.destroy();
@@ -156,12 +190,13 @@
                     datasets:[{ 
                         data:Object.values(data.mood_counts), 
                         backgroundColor:Object.keys(data.mood_counts).map(m=>{
-                            // handle mixed labels like 'mixed:joy(60)/sadness(40)'
+                            // determine base mood for color (handle mixed and normal)
                             let base = m;
-                            if (m && m.startsWith('mixed:')){
+                            if (m && typeof m === 'string' && m.startsWith('mixed:')){
                                 const rest = m.split(':')[1] || '';
                                 base = rest.split('/')[0].split('(')[0];
                             }
+                            base = String(base).toLowerCase();
                             return moodColors[base] || "#8A6CFF";
                         }),
                         borderColor: '#F0EBFF',
@@ -182,12 +217,7 @@
                                     // If label is a mixed summary like 'mixed:joy(60)/sadness(40)',
                                     // display the two top emotions instead of 'mixed:...'
                                     let rawLabel = ctx.label || '';
-                                    let displayLabel = rawLabel;
-                                    if (rawLabel.startsWith('mixed:')){
-                                        const parts = rawLabel.split(':')[1] || '';
-                                        const two = parts.split('/').map(p=>p.split('(')[0]);
-                                        displayLabel = two.join(' / ');
-                                    }
+                                    let displayLabel = mapMoodLabel(rawLabel);
                                     return `${displayLabel}: ${val} (${perc}%)`; 
                                 } 
                             },
@@ -215,13 +245,7 @@
                                         return data.labels.map((label, i) => {
                                             const value = data.datasets[0].data[i];
                                             const perc = totalCount > 0 ? ((value/totalCount)*100).toFixed(1) : 0;
-                                            // Parse mixed labels for friendlier legend text
-                                            let displayLabel = label;
-                                            if (label && label.startsWith('mixed:')){
-                                                const parts = label.split(':')[1] || '';
-                                                const two = parts.split('/').map(p=>p.split('(')[0]);
-                                                displayLabel = two.join(' / ');
-                                            }
+                                            const displayLabel = mapMoodLabel(label);
                                             return {
                                                 text: `${displayLabel} (${perc}%)`,
                                                 fillStyle: data.datasets[0].backgroundColor[i],
@@ -270,14 +294,16 @@
             const datasets=[];
             for(const [mood, trend] of Object.entries(data.trend_by_mood)){
                 const dataMap = new Map(trend.map(item=>[item.date,item.sentiment]));
-                // extract base mood for color if label is mixed
+                // determine base mood for color and display label
                 let base = mood;
-                if (mood && mood.startsWith('mixed:')){
+                if (mood && typeof mood === 'string' && mood.startsWith('mixed:')){
                     const rest = mood.split(':')[1] || '';
                     base = rest.split('/')[0].split('(')[0];
                 }
+                base = String(base).toLowerCase();
                 const color = moodColors[base] || "#6B7280";
-                datasets.push({ label:mood.charAt(0).toUpperCase() + mood.slice(1), data:sortedDates.map(d=>dataMap.get(d)), borderColor:color, backgroundColor:color+"33", fill:false, tension:0.3, pointRadius:4 });
+                const displayLabel = mapMoodLabel(mood);
+                datasets.push({ label:displayLabel, data:sortedDates.map(d=>dataMap.get(d)), borderColor:color, backgroundColor:color+"33", fill:false, tension:0.3, pointRadius:4 });
             }
             moodTrendChart = new Chart(ctx2,{ 
                 type:'line', 
@@ -321,9 +347,9 @@
                 data.most_frequent_words.forEach(([word,count])=>{
                     const span=document.createElement("span");
                     span.textContent=word;
-                    span.style.fontSize=`${12+Math.log(count)*4}px`;
-                    const bgColor=moodColors[data.word_moods[word]||'neutral']||"#8A6CFF";
-                    span.className=`p-1 px-2 rounded-full text-white font-semibold shadow-lg`;
+                    span.style.fontSize = `${12 + Math.log(count) * 4}px`;
+                    const bgColor = moodColors[(data.word_moods && data.word_moods[word]) || 'neutral'] || "#8A6CFF";
+                    span.className = "p-1 px-2 rounded-full text-white font-semibold shadow-lg";
                     span.style.backgroundColor=bgColor;
                     wordCloud.appendChild(span);
                 });
@@ -358,15 +384,26 @@
             entries.forEach(entry => {
                 const entryDiv = document.createElement('div');
                 entryDiv.className = 'bg-theme-panel/50 backdrop-blur-sm p-4 rounded-xl shadow-lg border border-theme-primary/20';
-                const timestamp = new Date(entry.timestamp.seconds * 1000);
+                let timeText = '—';
+                try {
+                    if (entry.timestamp && entry.timestamp.seconds) {
+                        const ts = new Date(entry.timestamp.seconds * 1000);
+                        timeText = ts.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    } else if (entry.timestamp) {
+                        const ts2 = new Date(entry.timestamp);
+                        if (!isNaN(ts2.getTime())) {
+                            timeText = ts2.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        }
+                    }
+                } catch (e) {}
                 entryDiv.innerHTML = `
                     <div class="flex items-center space-x-2 mb-2">
-                        <span class="font-bold text-lg capitalize text-theme-text-main">${entry.mood_label || "Neutral"}</span>
-                        <span class="text-theme-text-subtle text-sm">${timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span class="font-bold text-lg capitalize text-theme-text-main">${(entry.mood_label || entry.mood_dominant || 'Neutral')}</span>
+                        <span class="text-theme-text-subtle text-sm">${timeText}</span>
                         <span class="text-sm rounded-full px-2 py-0.5 text-white shadow-md" 
-                        style="background-color: ${moodColors[entry.mood.toLowerCase()] || "#8A6CFF"};">Sentiment: ${entry.sentiment}</span>
+                        style="background-color: ${(moodColors[(entry.mood_dominant || entry.mood_label || 'neutral').toLowerCase()] || "#8A6CFF")};">Sentiment: ${(entry.avg_sentiment ?? entry.sentiment ?? 0)}</span>
                     </div>
-                    <p class="text-theme-text-main">${entry.text || 'No text provided.'}</p>`;
+                    <p class="text-theme-text-main">${(entry.last_text || entry.text || 'No text provided.')}</p>`;
                 modalEntries.appendChild(entryDiv);
             });
         } else {
@@ -382,4 +419,4 @@
     document.getElementById("filterSelect").addEventListener("change",fetchAnalytics);
     fetchAnalytics();
 </script>
-{% endblock %}
+{% endblock %}

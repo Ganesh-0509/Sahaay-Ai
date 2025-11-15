@@ -6,6 +6,7 @@
 <title>Sahaay-AI | Your Companion for Mental Wellness</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="icon" href="/static/logo.png" type="image/png">
 <style>
   /* 3D Animation & Card Effects */
   .card-3d { transform-style: preserve-3d; transform: perspective(1000px) rotateX(0deg) rotateY(0deg); transition: transform 0.6s ease, box-shadow 0.3s ease; }
@@ -37,7 +38,10 @@
 
     <!-- Left: Logo -->
     <div class="flex-shrink-0">
-      <span class="text-2xl font-bold text-white">Sahaay-AI</span>
+      <div class="flex items-center">
+        <img src="/static/logo.png" alt="Sahaay-AI Logo" class="h-12 w-12 mr-3" loading="lazy" onerror="this.style.display='none'">
+        <span class="text-2xl font-bold text-white">Sahaay-AI</span>
+      </div>
     </div>
 
     <!-- Center: Navigation Links -->
@@ -62,6 +66,10 @@
 <header class="hero min-h-screen flex items-center justify-center text-center px-4 relative overflow-hidden" data-animate>
   <div class="animated-bg"></div>
   <div class="max-w-3xl relative z-10 mt-20">
+      <!-- Hero Logo -->
+      <div class="flex justify-center mb-8">
+        <img src="/static/logo.png" alt="Sahaay-AI Logo" class="h-32 w-32 drop-shadow-2xl animate-pulse" loading="lazy" onerror="this.style.display='none'">
+      </div>
     <h1 class="text-5xl md:text-6xl font-extrabold mb-6">Sahaay-AI: Your Companion for Mental Wellness</h1>
     <p class="text-lg md:text-xl mb-8 text-gray-200">A secure, private space for daily check-ins, mood tracking, and personalized guidance.</p>
     <div class="flex justify-center space-x-4 flex-wrap">

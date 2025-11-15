@@ -32,43 +32,50 @@ class GeminiAgent:
 
     def get_response(self, message, history=None, language='en'):
         try:
-            # Extract message content
             message_text = message.get('content', message) if isinstance(message, dict) else message
-            
-            # Language-specific instruction
+
             lang_instructions = {
-                'hi': "\n\n**IMPORTANT: Respond in Hindi (हिन्दी) language.**",
-                'ta': "\n\n**IMPORTANT: Respond in Tamil (தமிழ்) language.**",
-                'te': "\n\n**IMPORTANT: Respond in Telugu (తెలుగు) language.**",
+                'hi': "\n\nIMPORTANT: Respond in Hindi (हिन्दी).",
+                'ta': "\n\nIMPORTANT: Respond in Tamil (தமிழ்).",
+                'te': "\n\nIMPORTANT: Respond in Telugu (తెలుగు).",
                 'en': ""
             }
             lang_instruction = lang_instructions.get(language, "")
-            
-            # Create the prompt
+
             prompt = f"{self.system_prompt}{lang_instruction}\n\nUser: {message_text}"
-            
-            # Generate response using the new API format
+
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=prompt
             )
-            
-            # Get the response text
+
             if response and response.text:
                 response_text = response.text.strip()
+
+                # Clean markdown wrappers
+                response_text = response_text.replace("```json", "").replace("```", "").strip()
+
                 try:
-                    # Try to parse as JSON
-                    json_response = json.loads(response_text)
-                    if isinstance(json_response, dict) and "response" in json_response:
-                        return json_response["response"]
+                    parsed_json = json.loads(response_text)
+
+                    # ALWAYS return JSON wrapper
+                    return json.dumps({
+                        "response": parsed_json.get("response", "")
+                    })
+
                 except:
-                    # If not valid JSON, wrap in our response format
-                    return json.dumps({"response": response_text})
-                
-                return response_text
+                    # Force wrap into JSON
+                    return json.dumps({
+                        "response": response_text
+                    })
+
             else:
-                return json.dumps({"response": "I apologize, but I wasn't able to generate a response. Could you try asking in a different way?"})
-            
+                return json.dumps({
+                    "response": "I'm sorry, I'm unable to reply right now."
+                })
+
         except Exception as e:
             print(f"Gemini API error: {str(e)}")
-            return json.dumps({"response": "I apologize, but I encountered an error. Could you please try rephrasing your message?"})
+            return json.dumps({
+                "response": "Something went wrong. Please try again."
+            })
