@@ -28,18 +28,25 @@ class User(UserMixin):
 
     @staticmethod
     def create(email, name, password, db):
-        if not db: return None
-        user_id = str(uuid.uuid4())
-        password_hash = generate_password_hash(password)
-        db.collection('users').document(user_id).set({
-            'email': email,
-            'name': name,
-            'password_hash': password_hash,
-            'created_at': None,
-            'push_token': None,
-            'daily_reminder': False
-        })
-        return User(user_id, email, name)
+        if not db:
+            print("ERROR: Database not initialized in User.create()")
+            return None
+        try:
+            user_id = str(uuid.uuid4())
+            password_hash = generate_password_hash(password)
+            db.collection('users').document(user_id).set({
+                'email': email,
+                'name': name,
+                'password_hash': password_hash,
+                'created_at': None,
+                'push_token': None,
+                'daily_reminder': False
+            })
+            print(f"User created successfully: {user_id} ({email})")
+            return User(user_id, email, name)
+        except Exception as e:
+            print(f"ERROR creating user: {e}")
+            return None
 
 class AnonymousUser(UserMixin):
     def get_id(self):
@@ -50,4 +57,4 @@ class AnonymousUser(UserMixin):
 
     @property
     def is_authenticated(self):
-        return True
+        return False

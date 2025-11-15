@@ -6,10 +6,12 @@
   "consent_anon_button": "Use Anonymous Mode (Don’t Save)",
   "consent_exit_button": "Exit",
   "consent_footer": "Retention: 30 days • Right to Erase:...",
+
   "lang_title": "Select Your Language",
   "lang_desc": "Choose the language for your chat and prompts.",
   "select_lang": "Select Language",
   "lang_submit_button": "Continue",
+
   "page_title": "Daily Check-in",
   "dashboard_button": "Dashboard",
   "delete_data_button": "Delete Data",
@@ -20,38 +22,135 @@
   "reset_consent_button": "Reset Consent",
   "consent_status_title": "Consent Status",
   "consent_status_loading": "Loading...",
-  "crisis_banner": "⚠️ Crisis detected! Please seek help immediately."
-<<<<<<< HEAD
-  ,
+  "crisis_banner": "⚠️ Crisis detected! Please seek help immediately.",
+
   "overview": "Overview",
   "mood_journal": "Mood Journal",
   "coping_tools": "Coping Tools",
   "analytics": "Analytics",
   "settings": "Settings",
-  "dashboard_home": "Dashboard Home",
+
+  "welcome_back": "Welcome Back",
+  "today_summary": "Today's Summary",
+  "your_mood_stats": "Your Mood Stats",
+  "emotion_trends": "Emotion Trends",
+  "recent_activity": "Recent Activity",
+
+  "mood_entries": "Mood Entries",
+  "add_entry": "Add Entry",
+  "today_feel": "How do you feel today?",
+
+  "tools_breathing": "Breathing Exercises",
+  "tools_relaxation": "Relaxation Tools",
+  "tools_focus": "Focus & Grounding",
+  "tools_sleep": "Better Sleep Tips",
+
+  "weekly_report": "Weekly Report",
+  "monthly_report": "Monthly Report",
+  "emotion_distribution": "Emotion Distribution",
+  "dominant_emotion": "Dominant Emotion",
+  "mixed_emotion": "Mixed Emotion Breakdown",
+  "entries_over_time": "Entries Over Time",
+
+  "language": "Language",
+  "theme": "Theme",
+  "privacy": "Privacy",
+  "logout": "Logout",
+  "delete_account": "Delete My Data",
+  "change_language": "Change Language",
+
+  "dashboard_home": "Dashboard",
+  "daily_checkin_btn": "Daily Check-in",
   "mood_snapshot": "Mood Snapshot",
   "streak_tracker": "Streak Tracker",
   "quote_of_the_day": "Quote of the Day",
   "recent_checkins": "Recent Check-ins",
   "helpful_tips": "Helpful Tips",
-  "loading": "Loading...",
-  "daily_checkin_btn": "Daily Check-in",
+
+  "no_data": "No data available",
+  "no_data_yet": "No data yet.",
+
+  "no_recent_checkins": "No recent check-ins.",
+  "no_helpful_tips": "No helpful tips saved yet.",
+  "stay_positive": "Stay positive!",
+  "days_suffix": "days",
+
+  "neutral": "Neutral",
+  "positive": "Positive",
+  "negative": "Negative",
+
+  "streak_zero": "0 days",
   "recent_entries": "Recent Entries",
   "add_new_entry": "Add New Entry",
   "add_entry_btn": "Add Entry",
-  "avg_sentiment": "Average Sentiment",
-  "most_frequent_mood": "Most Frequent Mood",
-  "total_checkins": "Total Check-ins",
-  "mood_distribution": "Mood Distribution",
-  "mood_trend": "Mood Trend Over Time",
-  "top_words": "Top Words in Your Check-ins",
-  "top_3_tips": "Top 3 Helpful Tips",
-  "insights": "Insights",
+  "loading": "Loading...",
+  "journal_empty": "You haven’t added any entries yet.",
+  "enter_mood_error": "Please type something before saving.",
+  "save_failed": "Failed to save entry.",
+  "last_10_entries": "Last 10 Entries",
+"last_30_days": "Last 30 Days",
+"all_time": "All Time",
+
+"avg_sentiment": "Average Sentiment",
+"most_frequent_mood": "Most Frequent Mood",
+"total_checkins": "Total Check-ins",
+
+"mood_distribution": "Mood Distribution",
+"mood_trend": "Mood Trend",
+
+"top_words": "Top Words",
+"top_3_tips": "Top 3 Helpful Tips",
+"more_checkins_needed": "More check-ins needed.",
+"no_tips_found": "No helpful tips found.",
+"copied_tip": "Copied tip!",
+"copy_failed": "Copy failed",
+
+"insights": "Insights",
+"insights_placeholder": "Check in more often to get insights.",
+
+"modal_title": "Journal Entries",
+"no_entries_for_date": "No entries found for this date.",
+"sentiment": "Sentiment",
+"no_text_provided": "No text provided.",
   "account_preferences": "Account Preferences",
   "username": "Username",
   "save_changes": "Save Changes",
-  "delete_account": "Delete Account",
-  "delete_account_confirm": "Permanently delete your account and all related data. This action cannot be undone."
-=======
->>>>>>> 7b300e3842ffa484110cb5866d3d9adfde14f13b
+  "delete_account_confirm": "This will permanently delete all your data. This action cannot be undone.",
+  "filter_all": "All",
+  "filter_sad": "Sad ☹️",
+  "filter_neutral": "Neutral 😐",
+  "filter_calm": "Calm 😌",
+  "filter_happy": "Happy 😄",
+  "filter_anxious": "Anxious 😰",
+
+  "no_tools_available": "No tools available for this period.",
+  "failed_to_load_tools": "Failed to load tools.",
+
+  "mark_helpful": "✅ Mark Helpful",
+  "marked_success": "Marked as helpful! It will now appear on your Home page.",
+  "mark_failed": "Failed to mark as helpful.",
+  "daily_checkin": "Daily Check-in",
+  "dashboard": "Dashboard",
+  "user_menu": "User Menu",
+  "anonymous_mode": "Anonymous Mode",
+  "delete_data": "Delete Data",
+
+  "crisis_detected_banner": "If you or someone you know is in crisis, please seek immediate help.",
+  "crisis_help_button": "View Helplines & Resources",
+
+  "consent_status_given": "Consent Given ✅",
+  "consent_status_anon": "Anonymous Mode (No data is saved)",
+
+  "send_error": "Failed to send message.",
+
+  "privacy_policy": "Privacy & Data Policy",
+  "reset_consent": "Reset Consent",
+
+  "delete_confirm_text": "This will delete all of your stored check-ins and conversations. Continue?",
+  "data_deleted_message": "Your data was deleted.",
+  "failed_delete_message": "Erase failed.",
+  "anonymous_enabled": "Anonymous mode enabled — your messages will not be saved.",
+  "network_error": "Network error. Please try again.",
+  "crisis_banner_text": "If you or someone you know is in crisis, please seek immediate help."
+
 }

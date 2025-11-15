@@ -11,6 +11,8 @@
 </header>
 
 <section class="space-y-6">
+
+    <!-- Recent Mood Entries -->
     <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
         <h3 class="text-xl font-semibold mb-3">{{ lang.recent_entries }}</h3>
         <ul id="moodEntries" class="list-disc pl-5 max-h-64 overflow-y-auto">
@@ -18,11 +20,21 @@
         </ul>
     </div>
 
+    <!-- Add New Entry -->
     <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
         <h3 class="text-xl font-semibold mb-3">{{ lang.add_new_entry }}</h3>
-        <textarea id="newMood" rows="3" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-700"></textarea>
-        <button id="addMoodBtn" class="mt-2 px-4 py-2 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-500">{{ lang.add_entry_btn }}</button>
+        <textarea 
+            id="newMood" 
+            rows="3" 
+            class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none 
+                   focus:ring-2 focus:ring-teal-400 bg-white dark:bg-gray-700">
+        </textarea>
+        <button id="addMoodBtn" 
+                class="mt-2 px-4 py-2 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-500">
+            {{ lang.add_entry_btn }}
+        </button>
     </div>
+
 </section>
 {% endblock %}
 
@@ -34,33 +46,42 @@
             const data = await res.json();
             const list = document.getElementById('moodEntries');
             list.innerHTML = '';
-            if(data.entries && data.entries.length > 0) {
+
+            if (data.entries && data.entries.length > 0) {
                 data.entries.forEach(e => {
                     const li = document.createElement('li');
                     li.textContent = `[${e.date}] ${e.mood}`;
                     list.appendChild(li);
                 });
             } else {
-                list.innerHTML = '<li>No entries yet.</li>';
+                list.innerHTML = `<li>{{ lang.journal_empty }}</li>`;
             }
-        } catch(e){ console.error(e); }
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     document.getElementById('addMoodBtn').addEventListener('click', async () => {
         const mood = document.getElementById('newMood').value.trim();
-        if(!mood) return alert('Enter a mood');
+        if (!mood) return alert(`{{ lang.enter_mood_error }}`);
+
         try {
             const res = await fetch('/api/add_mood', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({mood})
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ mood })
             });
+
             const data = await res.json();
-            if(data.ok){
+            if (data.ok) {
                 document.getElementById('newMood').value = '';
                 fetchMoodEntries();
-            } else alert('Failed to save entry.');
-        } catch(e){ console.error(e); }
+            } else {
+                alert(`{{ lang.save_failed }}`);
+            }
+        } catch (e) {
+            console.error(e);
+        }
     });
 
     fetchMoodEntries();

@@ -7,74 +7,103 @@
 {% endblock %}
 
 {% block content %}
+
 <header class="flex justify-between items-center mb-8 animated-item">
     <div class="flex items-center gap-4">
         <h1 class="text-3xl font-bold text-theme-text-main">{{ lang.analytics }}</h1>
     </div>
+
     <div class="flex items-center gap-4">
-        <div class="relative inline-block text-left">
-            <select id="filterSelect" class="bg-theme-panel border border-theme-primary/30 rounded-xl shadow-lg px-4 py-2 text-sm font-medium text-theme-text-main focus:ring-2 focus:ring-theme-primary focus:border-theme-primary">
-                <option value="last10">Last 10 Entries</option>
-                <option value="30days">Last 30 Days</option>
-                <option value="all">All Time</option>
-            </select>
-        </div>
+        <select id="filterSelect"
+            class="bg-theme-panel border border-theme-primary/30 rounded-xl shadow-lg px-4 py-2 text-sm font-medium text-theme-text-main">
+            <option value="last10">{{ lang.last_10_entries }}</option>
+            <option value="30days">{{ lang.last_30_days }}</option>
+            <option value="all">{{ lang.all_time }}</option>
+        </select>
     </div>
 </header>
 
+
+<!-- KPI CARDS -->
 <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
     <div class="card animated-item text-center" style="animation-delay: 0.1s">
         <h2 class="text-lg font-semibold mb-2 text-theme-text-main">{{ lang.avg_sentiment }}</h2>
         <p id="kpiAvgSentiment" class="text-3xl font-bold text-theme-accent">--</p>
     </div>
+
     <div class="card animated-item text-center" style="animation-delay: 0.2s">
         <h2 class="text-lg font-semibold mb-2 text-theme-text-main">{{ lang.most_frequent_mood }}</h2>
         <p id="kpiMostMood" class="text-3xl font-bold text-theme-primary">--</p>
     </div>
+
     <div class="card animated-item text-center" style="animation-delay: 0.3s">
         <h2 class="text-lg font-semibold mb-2 text-theme-text-main">{{ lang.total_checkins }}</h2>
         <p id="kpiTotalCheckins" class="text-3xl font-bold text-theme-secondary">--</p>
     </div>
+
 </section>
 
+
+<!-- CHARTS -->
 <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
     <div class="card animated-item" style="animation-delay: 0.4s">
         <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.mood_distribution }}</h2>
         <canvas id="moodDistributionChart"></canvas>
     </div>
+
     <div class="card animated-item" style="animation-delay: 0.5s">
         <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.mood_trend }}</h2>
         <canvas id="moodTrendChart"></canvas>
     </div>
+
 </section>
 
+
+<!-- WORD CLOUD + TIPS -->
 <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
     <div class="card animated-item" style="animation-delay: 0.6s">
         <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.top_words }}</h2>
         <div id="wordCloud" class="flex flex-wrap gap-2 justify-center py-4"></div>
     </div>
+
     <div class="card animated-item" style="animation-delay: 0.7s">
         <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.top_3_tips }}</h2>
         <ul id="topTips" class="list-disc list-inside text-theme-text-subtle"></ul>
     </div>
+
 </section>
 
-<section class="card animated-item mb-8" style="animation-delay: 0.8s; background: linear-gradient(135deg, rgba(138, 108, 255, 0.1), rgba(197, 118, 255, 0.1)); border: 1px solid rgba(138, 108, 255, 0.3);">
+
+<!-- INSIGHTS -->
+<section class="card animated-item mb-8" style="animation-delay: 0.8s;
+    background: linear-gradient(135deg, rgba(138, 108, 255, 0.1), rgba(197, 118, 255, 0.1));
+    border: 1px solid rgba(138, 108, 255, 0.3);">
     <h2 class="text-lg font-semibold mb-3 text-theme-text-main">{{ lang.insights }}</h2>
-    <p id="insightsBox" class="text-theme-text-main italic"></p>
+    <p id="insightsBox" class="text-theme-text-main italic">{{ lang.insights_placeholder }}</p>
 </section>
 
-<div id="entryModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
-    <div class="bg-theme-panel backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-full overflow-y-auto border border-theme-primary/30">
+
+<!-- ENTRY MODAL -->
+<div id="entryModal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+    <div
+        class="bg-theme-panel backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-full overflow-y-auto border border-theme-primary/30">
+
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-2xl font-bold text-theme-text-main" id="modalTitle">Journal Entries</h3>
-            <button id="closeModal" class="text-theme-text-subtle hover:text-theme-text-main text-3xl transition-colors">&times;</button>
+            <h3 class="text-2xl font-bold text-theme-text-main" id="modalTitle">{{ lang.modal_title }}</h3>
+            <button id="closeModal"
+                class="text-theme-text-subtle hover:text-theme-text-main text-3xl transition-colors">&times;</button>
         </div>
+
         <div id="modalEntries" class="space-y-4"></div>
+
     </div>
 </div>
-{% endblock %}
 
+{% endblock %}
 
 {% block page_scripts %}
 <script>

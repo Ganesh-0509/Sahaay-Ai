@@ -5,7 +5,7 @@ CRISIS_PROMPT = """Analyze the following user message to determine if it indicat
 class CrisisAgent:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
 
     def is_crisis(self, text):
         response = self.model.generate_content(CRISIS_PROMPT.format(text=text))

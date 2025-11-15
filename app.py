@@ -1,10 +1,7 @@
-# app.py (fixed to use google-genai and gemini-2.5-flash)
+# app.py (fixed to use google-genai and gemini-2.0-flash)
 import os
-import uuid
-import random
 import json
 import re
-import requests
 from google import genai
 from flask import Flask, jsonify, request, session, redirect, url_for, render_template, flash
 from flask_login import LoginManager, login_required, current_user, logout_user
@@ -16,19 +13,12 @@ from dotenv import load_dotenv
 from utils.emotion_classifier import classify_emotion, parse_final_mood
 
 from models.user import User, AnonymousUser
-from models.forms import SignupForm
-from agents.gemini_agent import GeminiAgent
-from agents.crisis_agent import CrisisAgent
-from agents.coping_tip_agent import CopingTipAgent
-from utils.rate_limit import rate_limited
-from utils.sentiment import get_sentiment_score, get_coarse_mood
 from utils.helpers import format_timestamp, firestore_to_datetime, calculate_streak, get_most_frequent_words
-from translations.translation_utils import get_user_translations, load_translation, LANGUAGES, TRANSLATIONS
+from translations.translation_utils import get_user_translations, LANGUAGES, TRANSLATIONS
 from flask_cors import CORS
 from pushbullet import Pushbullet
 from google.cloud import firestore
 from google.oauth2 import service_account
-import json as _json
 from datetime import datetime, timezone, timedelta
 
 # Use timezone.utc constant
@@ -42,10 +32,6 @@ print("\nLoading environment variables...")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip().strip("'\"")
 SECRET_KEY = os.getenv("SECRET_KEY", "").strip().strip("'\"")
 PUSHBULLET_API_TOKEN = os.getenv("PUSHBULLET_API_TOKEN", "").strip().strip("'\"")
-
-print(f"GEMINI_API_KEY loaded: {'Yes' if GEMINI_API_KEY else 'No'}")
-if GEMINI_API_KEY:
-    print(f"GEMINI_API_KEY starts with: {GEMINI_API_KEY[:10]}...")
 
 # Validate env presence (we will validate API key by listing models shortly)
 if not GEMINI_API_KEY or not SECRET_KEY:
@@ -67,7 +53,7 @@ except Exception as e:
     raise
 
 # Choose model to use app-wide (user selected)
-MODEL_NAME = "gemini-2.5-flash"  # Full model path for v1 API
+MODEL_NAME = "gemini-2.0-flash"  # Full model path for v1 API
 
 # Firestore initialization (explicit service account file recommended)
 try:
@@ -84,7 +70,7 @@ try:
         project_id = None
         try:
             with open(cred_path, 'r', encoding='utf-8') as _f:
-                project_id = _json.load(_f).get('project_id')
+                project_id = json.load(_f).get('project_id')
         except Exception:
             project_id = None
         if project_id:
@@ -105,6 +91,7 @@ app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['REMEMBER_COOKIE_SECURE'] = True
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['GEMINI_API_KEY'] = GEMINI_API_KEY
 app.config['GEMINI_MODEL'] = MODEL_NAME
 
 pb = Pushbullet(PUSHBULLET_API_TOKEN) if PUSHBULLET_API_TOKEN else None
@@ -134,7 +121,7 @@ def _rate_limited(key: str, max_requests: int = RATE_LIMIT_MAX_REQUESTS, window_
 # Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'auth.login'
 login_manager.login_message_category = 'info'
 
 
@@ -356,32 +343,6 @@ def generate_coping_tip(mood_text):
         return "Take a deep breath and a moment for yourself."
 
 
-def get_most_frequent_words(docs, num_words=30):
-    stop_words = set(['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'of', 'at', 'by', 'for', 'with', 'about', 'to', 'from', 'in', 'out', 'on', 'off', 'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'doing', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'it', 'its', 'so', 'not', 'very', 'just'])
-    words_by_mood = {}
-    for d in docs:
-        # prefer mood_label or mood_dominant or 'neutral'
-        mood = d.get('mood', d.get('mood_label', 'neutral')).lower()
-        text = d.get('text', '')
-        if not isinstance(text, str):
-            continue
-        found_words = re.findall(r'\b\w+\b', text.lower())
-        if mood not in words_by_mood:
-            words_by_mood[mood] = []
-        words_by_mood[mood].extend(word for word in found_words if word not in stop_words and len(word) > 1)
-    all_words = [word for words in words_by_mood.values() for word in words]
-    word_counts = Counter(all_words)
-    most_common_words = word_counts.most_common(num_words)
-    word_moods = {}
-    for word, _ in most_common_words:
-        mood_counts_for_word = Counter()
-        for mood, words in words_by_mood.items():
-            mood_counts_for_word[mood] = words.count(word)
-        if mood_counts_for_word:
-            word_moods[word] = mood_counts_for_word.most_common(1)[0][0]
-    return most_common_words, word_moods
-
-
 # --- Routes (kept your original structure) ---
 @app.route("/api/fetch_conversation", methods=["GET"])
 @login_required
@@ -498,146 +459,11 @@ def reset_consent():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-# --- Chat API ---
-@app.route("/chat", methods=["POST"])
-@login_required
-def chat():
-    user_id = current_user.id
-    if _rate_limited(user_id):
-        return jsonify({'error': 'Rate limit exceeded. Please wait.'}), 429
-    data = request.get_json()
-    message = (data.get("message") or "").strip() if isinstance(data, dict) else ""
-    lang = data.get("lang", "en") if isinstance(data, dict) else "en"
-
-    if not message:
-        return jsonify({"ok": False, "message": "No message provided."}), 400
-
-    if len(message) > 2000:
-        return jsonify({"ok": False, "message": "Message too long. Please keep it under 2000 characters."}), 413
-
-    limiter_key = None
-    try:
-        if current_user.is_authenticated:
-            limiter_key = f"user:{current_user.id}"
-        else:
-            limiter_key = f"ip:{request.remote_addr}"
-    except Exception:
-        limiter_key = f"ip:{request.remote_addr}"
-    if _rate_limited(limiter_key):
-        return jsonify({"ok": False, "message": "You are sending messages too quickly. Please wait a moment."}), 429
-
-    user_id = getattr(current_user, "id", current_user.get_id())
-    history = CHAT_HISTORY.get(user_id, [])
-    history.append({"role": "user", "content": message})
-
-    try:
-        # Sentiment + emotion
-        analysis = TextBlob(message)
-        sentiment_score = analysis.sentiment.polarity
-        if sentiment_score > 0.2:
-            coarse_mood = "positive"
-        elif sentiment_score < -0.2:
-            coarse_mood = "negative"
-        else:
-            coarse_mood = "mixed"
-
-        raw_mood = classify_emotion(message) or coarse_mood
-        mood_list, mood_label = parse_final_mood(raw_mood)
-
-        # Generate chat response using single-string contents (system + user)
-        combined_input = SYSTEM_PROMPT + "\n\nUser: " + message
-        chat_response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=combined_input
-        )
-
-        response_text = getattr(chat_response, "text", "").strip()
-        CHAT_HISTORY[user_id] = history + [{"role": "assistant", "content": response_text}]
-
-        # Parse JSON response if model returned JSON
-        match = re.search(r"\{.*\}", response_text, re.DOTALL)
-        if match:
-            try:
-                response_json = json.loads(match.group(0).replace("```json", "").replace("```", ""))
-            except Exception:
-                response_json = {"response": response_text}
-        else:
-            response_json = {"response": response_text}
-
-        crisis = is_crisis_sentence(message)
-
-        # --- FIX: pass raw_mood (string) into save_checkin so parse_final_mood runs there ---
-        if db:
-            save_checkin(
-                user_id=user_id,
-                mood=raw_mood,   # <- corrected
-                language=lang,
-                text=message,
-                intent="casual_chat",
-                sentiment=sentiment_score
-            )
-
-        final_response = {
-            "mood": mood_label,
-            "mood_list": mood_list,
-            "intent": "casual_chat",
-            "sentiment": sentiment_score,
-            "response": response_json.get("response", "I'm here to listen. Can you tell me more?")
-        }
-        final_response["crisis_detected"] = crisis
-        return jsonify({"ok": True, "data": final_response})
-    except Exception as e:
-        print("Chat error:", e)
-        return jsonify({"ok": False, "message": f"Error generating response: {e}"}), 500
-
-
-# Logout and dashboard routes (kept as-is)
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
-
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    return render_template('home.html', user=current_user, lang=get_user_translations())
-
-
-@app.route('/dashboard/mood')
-@login_required
-def dashboard_mood():
-    return render_template('mood.html', user=current_user, lang=get_user_translations())
-
-
-@app.route('/dashboard/settings')
-@login_required
-def dashboard_settings():
-    return render_template('settings.html', user=current_user, lang=get_user_translations())
-
-
-@app.route('/dashboard/analytics')
-@login_required
-def dashboard_analytics():
-    return render_template('analytics.html', user=current_user, lang=get_user_translations())
-
-
-@app.route('/dashboard/tools')
-@login_required
-def dashboard_tools():
-    return render_template('tools.html', user=current_user, lang=get_user_translations())
-
-
-@app.route("/privacy")
-def privacy():
-    return render_template("privacy.html")
-
-
-# --- API routes for UI ---
-@app.route("/api/home_data")
+@app.route('/api/home_data', methods=['GET'])
 @login_required
 def home_data():
+    if not db:
+        return jsonify({"error": "Database not initialized"}), 500
     user_id = current_user.id
     period = request.args.get('period', 'last10')
     try:
@@ -663,9 +489,13 @@ def home_data():
                 helpful.append({"date": format_timestamp(ts), "tip": d.get("coping_tip", ""), "mood": d.get("mood_label", d.get("mood_dominant", "N/A"))})
 
         latest_mood = recent[0]["mood"] if recent else "No data yet."
-        return jsonify({"streak": streak, "recent": recent, "helpful": helpful, "quote": "Keep going, you're stronger than you think! 🌱", "mood": latest_mood})
+        result = {"streak": streak, "recent": recent, "helpful": helpful, "quote": "Keep going, you're stronger than you think! 🌱", "mood": latest_mood}
+        print(f"Home data for user {user_id}: {result}")
+        return jsonify(result)
     except Exception as e:
-        print("Home data fetch failed:", e)
+        print(f"Home data fetch failed for user {user_id}:", e)
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": "Failed to fetch home data"}), 500
 
 
@@ -854,6 +684,8 @@ def mark_helpful():
 def get_settings():
     if isinstance(current_user, AnonymousUser):
         return jsonify({"ok": False, "message": "Cannot get settings for anonymous user."}), 403
+    if not users_ref:
+        return jsonify({"ok": False, "message": "Firestore not configured."}), 500
     user_id = current_user.id
     try:
         user_doc = users_ref.document(user_id).get()
@@ -874,6 +706,8 @@ def get_settings():
 def update_settings():
     if isinstance(current_user, AnonymousUser):
         return jsonify({"ok": False, "message": "Cannot update settings for anonymous user."}), 403
+    if not users_ref:
+        return jsonify({"ok": False, "message": "Firestore not configured."}), 500
     user_id = current_user.id
     data = request.get_json()
     updates = {}
@@ -895,6 +729,8 @@ def update_settings():
 def delete_account():
     if isinstance(current_user, AnonymousUser):
         return jsonify({"ok": False, "message": "Cannot delete account for anonymous user."}), 403
+    if not db or not users_ref:
+        return jsonify({"ok": False, "message": "Firestore not configured."}), 500
     user_id = current_user.id
     try:
         checkins_ref = db.collection(f"users/{user_id}/checkins")

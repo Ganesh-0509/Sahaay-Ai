@@ -8,7 +8,7 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dashboard.dashboard'))
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -18,7 +18,7 @@ def login():
         if user:
             login_user(user)
             flash('Logged in successfully!', 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('dashboard.dashboard'))
         else:
             flash('Invalid email or password.', 'danger')
     return render_template('login.html')
@@ -26,27 +26,44 @@ def login():
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dashboard.dashboard'))
     form = SignupForm(request.form)
-    if request.method == 'POST' and form.validate():
+    if request.method == 'POST':
+        if not form.validate():
+            # Flash validation errors
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"{field}: {error}", 'danger')
+            return render_template('signup.html', form=form)
+        
         email = form.email.data
         name = form.name.data
         password = form.password.data
         consent = form.consent.data
+        
         if not consent:
             flash('You must agree to the privacy policy to sign up.', 'danger')
             return render_template('signup.html', form=form)
+        
         from app import db
+        if not db:
+            flash('Database connection failed. Please try again later.', 'danger')
+            return render_template('signup.html', form=form)
+        
         if User.get_by_email(email, db):
             flash('Email address already exists.', 'danger')
+            return render_template('signup.html', form=form)
         else:
-            new_user = User.create(email, name, password)
+            new_user = User.create(email, name, password, db)
+            if not new_user:
+                flash('Account creation failed. Please try again.', 'danger')
+                return render_template('signup.html', form=form)
             login_user(new_user)
             flash('Account created successfully!', 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('dashboard.dashboard'))
     return render_template('signup.html', form=form)
 
 @auth_bp.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('auth.login'))

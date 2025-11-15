@@ -14,7 +14,7 @@ class GeminiAgent:
         try:
             # Initialize the client
             self.client = genai.Client(api_key=api_key)
-            self.model = "gemini-1.0-pro"  # Using the stable v1.0 pro model
+            self.model = "gemini-2.0-flash"  # Using the latest flash model
             
             # Test the configuration
             test_response = self.client.models.generate_content(

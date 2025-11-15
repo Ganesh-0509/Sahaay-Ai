@@ -165,14 +165,14 @@
             <h2 class="text-3xl font-bold text-white">Sahaay AI</h2>
         </div>
         <nav class="space-y-2 flex-1">
-            <a href="{{ url_for('dashboard') }}" class="sidebar-link {% if request.path == url_for('dashboard') %}sidebar-active{% endif %}">🏠 {{ lang.overview }}</a>
-            <a href="{{ url_for('dashboard_mood') }}" class="sidebar-link {% if request.path == url_for('dashboard_mood') %}sidebar-active{% endif %}">📔 {{ lang.mood_journal }}</a>
-            <a href="{{ url_for('dashboard_tools') }}" class="sidebar-link {% if request.path == url_for('dashboard_tools') %}sidebar-active{% endif %}">🧘 {{ lang.coping_tools }}</a>
-            <a href="{{ url_for('dashboard_analytics') }}" class="sidebar-link {% if request.path == url_for('dashboard_analytics') %}sidebar-active{% endif %}">📊 {{ lang.analytics }}</a>
-            <a href="{{ url_for('dashboard_settings') }}" class="sidebar-link {% if request.path == url_for('dashboard_settings') %}sidebar-active{% endif %}">⚙ {{ lang.settings }}</a>
+            <a href="{{ url_for('dashboard.dashboard') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard') %}sidebar-active{% endif %}">🏠 {{ lang.overview }}</a>
+            <a href="{{ url_for('dashboard.dashboard_mood') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_mood') %}sidebar-active{% endif %}">📔 {{ lang.mood_journal }}</a>
+            <a href="{{ url_for('dashboard.dashboard_tools') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_tools') %}sidebar-active{% endif %}">🧘 {{ lang.coping_tools }}</a>
+            <a href="{{ url_for('dashboard.dashboard_analytics') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_analytics') %}sidebar-active{% endif %}">📊 {{ lang.analytics }}</a>
+            <a href="{{ url_for('dashboard.dashboard_settings') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_settings') %}sidebar-active{% endif %}">⚙ {{ lang.settings }}</a>
         </nav>
         <div>
-             <a href="{{ url_for('logout') }}" class="sidebar-link text-theme-text-subtle hover:bg-red-500/20 hover:text-white">🚪 Logout</a>
+             <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-theme-text-subtle hover:bg-red-500/20 hover:text-white">🚪 Logout</a>
         </div>
     </aside>
 

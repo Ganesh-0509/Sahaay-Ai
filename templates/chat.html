@@ -1,43 +1,62 @@
 {% extends "_layout.html" %}
 
-{% block title %}Sahaay-AI Daily Check-in{% endblock %}
+{% block title %}{{ lang.daily_checkin }}{% endblock %}
 
 {% block content %}
 <div id="mainContainer" class="flex flex-col min-h-screen">
   <header class="flex justify-between items-center mb-6 bg-theme-panel p-4 rounded-2xl shadow animated-item">
-    <h1 id="pageTitle" class="text-xl font-semibold text-theme-text-main">Daily Check-in</h1>
+    <h1 id="pageTitle" class="text-xl font-semibold text-theme-text-main">{{ lang.daily_checkin }}</h1>
+
     <div class="flex items-center gap-3">
-      <a href="/dashboard" id="dashboardLink" class="flex items-center gap-2 px-4 py-2 btn-primary rounded-lg shadow-md hover:opacity-90 transition" aria-label="Open Dashboard">
-        <i data-lucide="home"></i> Dashboard
+      <a href="/dashboard" id="dashboardLink" 
+         class="flex items-center gap-2 px-4 py-2 btn-primary rounded-lg shadow-md hover:opacity-90 transition"
+         aria-label="{{ lang.dashboard }}">
+        <i data-lucide="home"></i> {{ lang.dashboard }}
       </a>
+
       <div class="relative inline-block text-left">
-        <button id="userDropdownBtn" class="flex items-center justify-center w-10 h-10 bg-theme-panel rounded-full focus:outline-none focus:ring-2 focus:ring-theme-accent transition" aria-haspopup="true" aria-expanded="true" aria-label="User menu">
+        <button id="userDropdownBtn"
+          class="flex items-center justify-center w-10 h-10 bg-theme-panel rounded-full focus:outline-none focus:ring-2 focus:ring-theme-accent transition"
+          aria-label="{{ lang.user_menu }}">
           <i data-lucide="user"></i>
         </button>
-        <div id="userDropdownMenu" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-theme-panel ring-1 ring-black ring-opacity-5 transition hidden z-[1000]" role="menu" aria-orientation="vertical" aria-labelledby="userDropdownBtn">
-          <div class="py-1" role="none">
+
+        <div id="userDropdownMenu"
+          class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-theme-panel ring-1 ring-black ring-opacity-5 transition hidden z-[1000]"
+          role="menu">
+          <div class="py-1">
+            
             <div id="usernameDisplay" class="px-4 py-2 text-sm" role="menuitem">
-              <span id="displayName">Loading...</span>
+              <span id="displayName">{{ lang.loading }}</span>
             </div>
+
             <hr class="border-theme-primary mx-2">
+
             <div id="anonymousToggle" class="block px-4 py-2 text-sm hover:bg-theme-accent transition" role="menuitem">
               <div class="flex items-center justify-between">
-                <span>Anonymous Mode</span>
+                <span>{{ lang.anonymous_mode }}</span>
                 <label class="flex items-center cursor-pointer">
                   <div class="relative">
-                    <input type="checkbox" id="anonymousCheckbox" class="sr-only" aria-label="Enable anonymous mode">
+                    <input type="checkbox" id="anonymousCheckbox" class="sr-only">
                     <div class="block bg-theme-hover w-10 h-6 rounded-full"></div>
                     <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all duration-300"></div>
                   </div>
                 </label>
               </div>
             </div>
-            <a href="#" id="eraseBtn" class="flex items-center gap-2 px-4 py-2 text-sm text-theme-pulse hover:bg-theme-pulse/20 hover:text-white rounded-md transition" aria-label="Delete all data">
-              <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Data
+
+            <a href="#" id="eraseBtn" 
+              class="flex items-center gap-2 px-4 py-2 text-sm text-theme-pulse hover:bg-theme-pulse/20 hover:text-white rounded-md transition"
+              aria-label="{{ lang.delete_data }}">
+              <i data-lucide="trash-2" class="w-4 h-4"></i> {{ lang.delete_data }}
             </a>
-            <a href="/logout" id="logoutBtn" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-theme-accent rounded-md transition" role="menuitem" aria-label="Logout">
-              <i data-lucide="log-out" class="w-4 h-4"></i> Logout
+
+            <a href="/logout"
+              class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-theme-accent rounded-md transition"
+              aria-label="{{ lang.logout }}">
+              <i data-lucide="log-out" class="w-4 h-4"></i> {{ lang.logout }}
             </a>
+
           </div>
         </div>
       </div>
@@ -45,73 +64,109 @@
   </header>
 
   <div id="crisisBanner" class="bg-red-500 text-white p-4 rounded-xl shadow-md text-sm text-center mb-4 hidden">
-    <p>If you or someone you know is in crisis, please seek immediate help.</p>
-    <button id="helpResourcesBtn" class="underline font-bold mt-1">View Helplines & Resources</button>
+    <p>{{ lang.crisis_banner }}</p>
+    <button id="helpResourcesBtn" class="underline font-bold mt-1">{{ lang.crisis_help_button }}</button>
   </div>
 
   <div id="consent-card" class="bg-theme-panel rounded-2xl shadow p-4 mb-4 animated-item">
-    <h2 class="text-lg font-semibold mb-2 text-theme-text-main">Consent Status <span title="Data is anonymized, kept for 30 days">❓</span></h2>
-    <p id="consent-status" class="text-theme-text-subtle">Loading...</p>
+    <h2 class="text-lg font-semibold mb-2 text-theme-text-main">
+      {{ lang.consent_status_title }} <span title="Data is anonymized, kept for 30 days">❓</span>
+    </h2>
+
+    <p id="consent-status" class="text-theme-text-subtle">{{ lang.consent_status_loading }}</p>
   </div>
 
-  <div class="flex flex-col flex-1 bg-theme-panel rounded-2xl shadow overflow-hidden animated-item">
-    <div id="chatBox" class="flex-1 flex flex-col gap-3 p-4 overflow-y-auto" role="log" aria-live="polite"></div>
+   <div class="flex flex-col flex-1 bg-theme-panel rounded-2xl shadow overflow-hidden animated-item">
+    
+    <!-- Chat Messages -->
+    <div id="chatBox" class="flex-1 flex flex-col gap-3 p-4 overflow-y-auto" 
+         role="log" aria-live="polite"></div>
+
+    <!-- Emoji Shortcuts -->
     <div class="p-2 border-t border-theme-primary bg-theme-panel">
       <div class="emoji-row flex gap-2 items-center">
-        <button class="px-2 py-1" aria-label="Add happy emoji">😀</button>
-        <button class="px-2 py-1" aria-label="Add sad emoji">😢</button>
-        <button class="px-2 py-1" aria-label="Add anxious emoji">😰</button>
-        <button class="px-2 py-1" aria-label="Add calm emoji">😌</button>
-        <button class="px-2 py-1" aria-label="Add heart emoji">❤️</button>
+        <button class="px-2 py-1">😀</button>
+        <button class="px-2 py-1">😢</button>
+        <button class="px-2 py-1">😰</button>
+        <button class="px-2 py-1">😌</button>
+        <button class="px-2 py-1">❤️</button>
       </div>
     </div>
+
+    <!-- Input Area -->
     <div class="flex gap-2 items-center p-3 border-t border-theme-primary bg-theme-panel">
-      <input id="message" type="text" placeholder="Type your message..."
-        class="flex-1 p-3 rounded-xl border-theme-primary focus:outline-none focus:ring-2 focus:ring-theme-accent bg-theme-panel text-theme-text-main" aria-label="Type your message">
-      <button id="sendBtn" class="flex items-center gap-2 btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition" aria-label="Send message">
-        <i data-lucide="send"></i> <span id="sendText">Send</span>
-        <span id="sendSpinner" class="hidden" aria-hidden="true"><span class="send-spinner" /></span>
+      <input 
+        id="message" 
+        type="text" 
+        placeholder="{{ lang.input_placeholder }}"
+        class="flex-1 p-3 rounded-xl border-theme-primary focus:outline-none 
+               focus:ring-2 focus:ring-theme-accent bg-theme-panel text-theme-text-main">
+
+      <button id="sendBtn" 
+        class="flex items-center gap-2 btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition">
+        <i data-lucide="send"></i>
+        <span id="sendText">{{ lang.send_button }}</span>
+        <span id="sendSpinner" class="hidden"><span class="send-spinner"></span></span>
       </button>
     </div>
   </div>
 
-  <p id="chatError" class="text-theme-pulse mt-2 hidden" role="status"></p>
+  <p id="chatError" 
+     class="text-theme-pulse mt-2 hidden"
+     role="status">
+     {{ lang.chat_error }}
+  </p>
 
   <footer class="text-center text-xs text-theme-text-subtle mt-4">
-    <p><a href="/privacy" class="underline">Privacy & Data Policy</a></p>
+    <p><a href="/privacy" class="underline">{{ lang.privacy_policy }}</a></p>
     <button id="resetConsentBtn"
-            class="mt-2 px-3 py-1 bg-theme-pulse text-white text-xs rounded hover:bg-theme-pulse/80">
-      Reset Consent
+      class="mt-2 px-3 py-1 bg-theme-pulse text-white text-xs rounded hover:bg-theme-pulse/80">
+      {{ lang.reset_consent }}
     </button>
   </footer>
-</div>
 
-<!-- Consent Modal -->
-<div id="consentModal" role="dialog" aria-labelledby="consentTitle" aria-describedby="consentDesc" tabindex="0"
+</div> 
+<!-- end main container -->
+
+<!-- ✅ Consent Modal -->
+<div id="consentModal"
+     role="dialog"
      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-[9999] hidden">
+
   <div class="bg-theme-panel rounded-2xl p-6 w-[90%] max-w-md flex flex-col gap-4">
-    <h2 id="consentTitle" class="text-xl font-semibold text-theme-text-main">Privacy & Consent</h2>
+
+    <h2 id="consentTitle" class="text-xl font-semibold">
+      {{ lang.consent_title }}
+    </h2>
+
     <p id="consentDesc" class="text-sm text-theme-text-subtle">
-      We store only anonymized mood check-ins to improve wellbeing support. You can continue
-      <b>with consent</b> (data helps insights) or in <b>anonymous mode</b> (no storage). You can delete your data anytime.
+      {{ lang.consent_desc }}
     </p>
+
     <div class="flex flex-col gap-2">
-      <button id="consentAgree" class="btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition" tabindex="0">
-        I Agree (Save Anonymized Check-ins)
+      <button id="consentAgree" class="btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition">
+        {{ lang.consent_agree_button }}
       </button>
-      <button id="consentAnon" class="bg-theme-panel text-theme-text-main px-6 py-3 rounded-xl hover:opacity-90 transition" tabindex="0">
-        Use Anonymous Mode (Don’t Save)
+
+      <button id="consentAnon" 
+        class="bg-theme-panel text-theme-text-main px-6 py-3 rounded-xl hover:opacity-90 transition">
+        {{ lang.consent_anon_button }}
       </button>
-      <button id="consentExit" class="text-sm text-theme-text-subtle underline" tabindex="0">
-        Exit
+
+      <button id="consentExit"
+        class="text-sm text-theme-text-subtle underline">
+        {{ lang.consent_exit_button }}
       </button>
     </div>
+
     <p class="text-xs text-theme-text-subtle">
-      Retention: 30 days • Right to Erase: “Delete my data” in header • Crisis: Helplines available
+      {{ lang.consent_footer }}
     </p>
+
   </div>
 </div>
 {% endblock %}
+
 
 {% block page_scripts %}
 <style>
