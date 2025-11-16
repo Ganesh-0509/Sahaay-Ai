@@ -1084,6 +1084,8 @@ from routes.dashboard_routes import dash_bp
 from routes.misc_routes import misc_bp
 from routes.api_routes import api_bp
 from admin import admin_bp
+from routes.community_routes import community_bp
+app.register_blueprint(community_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(chat_bp)
 app.register_blueprint(dash_bp)

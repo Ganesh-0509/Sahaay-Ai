@@ -1,0 +1,20 @@
+{% extends "_layout.html" %}
+{% block title %}Community - Welcome{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="card max-w-2xl mx-auto p-8 text-center">
+    <h1 class="text-3xl font-bold mb-4">Welcome to the Community</h1>
+    <p class="mb-6">This space is for sharing feelings and asking for suggestions. Choose where you'd like to go.</p>
+    <div class="flex gap-6 justify-center">
+      <a href="/community/posts" class="card p-6 w-48 hover:shadow-lg"> 
+        <h3 class="font-semibold">Posts</h3>
+        <p class="text-sm mt-2">Share short updates or feelings and react like a chat.</p>
+      </a>
+      <a href="/community/polls" class="card p-6 w-48 hover:shadow-lg">
+        <h3 class="font-semibold">Polls</h3>
+        <p class="text-sm mt-2">Ask a question and collect votes or suggestions.</p>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

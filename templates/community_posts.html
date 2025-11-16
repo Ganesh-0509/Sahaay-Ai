@@ -1,0 +1,46 @@
+{% extends "_layout.html" %}
+{% block title %}Community - Posts{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="flex items-center justify-between">
+    <h2>Community Posts</h2>
+    <button id="open-post-modal" class="btn-primary">New Post</button>
+  </div>
+  <div id="posts-list">
+    {% if posts and posts|length > 0 %}
+      {% for p in posts %}
+        <div class="card mb-4">
+          <div class="meta"><strong>{{ p.author_display }}</strong> • {{ p.created_at }}</div>
+          <div class="text mt-2">{{ p.text }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="muted">No posts yet.</div>
+    {% endif %}
+  </div>
+  <!-- composer removed from page; use 'New Post' modal to create posts -->
+  <!-- Post modal -->
+  <div id="post-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" style="display:none;">
+ <div class="card w-[700px] p-6 bg-gray-900 text-white rounded-xl shadow-xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-semibold">Create Post</h3>
+      <button id="post-modal-close" class="btn-primary">Close</button>
+    </div>
+
+    <div>
+      <textarea 
+        id="modal-post-text"
+        rows="8"
+        class="w-full h-48 p-4 mb-6 dark-input bg-violet-900 text-white rounded-lg border border-violet-700 placeholder-gray-300"
+        placeholder="Write something..."
+      ></textarea>
+
+      <div>
+        <button id="modal-post-submit" class="btn-primary">Post</button>
+      </div>
+    </div>
+</div>
+</div>
+</div>
+<script src="/static/js/community_posts.js"></script>
+{% endblock %}

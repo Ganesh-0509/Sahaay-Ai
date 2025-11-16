@@ -1,0 +1,96 @@
+{% extends "_layout.html" %}
+{% block title %}Community{% endblock %}
+{% block content %}
+<div class="container">
+  <h2>Community</h2>
+  <div class="community-grid">
+    <div class="col" id="posts-col">
+      <div class="flex items-center justify-between">
+        <h3>Posts</h3>
+        <button id="open-post-modal" class="btn-primary">New Post</button>
+      </div>
+      <div id="posts">
+        {% if posts and posts|length > 0 %}
+          {% for p in posts %}
+            <div class="community-post card">
+              <div class="meta"><strong>{{ p.author_display }}</strong> • {{ p.created_at }}</div>
+              <div class="text">{{ p.text }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="muted">No posts yet — be the first to share.</div>
+        {% endif %}
+      </div>
+  <!-- composer removed; creation now via top-right 'New Post' modal -->
+    </div>
+
+    <!-- Post modal -->
+    <div id="post-modal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" style="display:none;">
+      <div class="card max-w-2xl p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl">Create Post</h3>
+          <button id="post-modal-close" class="btn-primary">Close</button>
+        </div>
+        <div>
+          <textarea id="modal-post-text" rows="4" class="w-full p-2 mb-2" placeholder="Write something..."></textarea>
+          <div><button id="modal-post-submit" class="btn-primary">Post</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col" id="polls-col">
+      <h3>Polls</h3>
+      <div id="polls">
+        {% if polls and polls|length > 0 %}
+          {% for poll in polls %}
+            <div class="community-poll card">
+              <div class="meta"><strong>{{ poll.author_display }}</strong> • {{ poll.created_at }}</div>
+              <div class="question">{{ poll.question }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="muted">No polls yet — create one to get suggestions.</div>
+        {% endif %}
+      </div>
+  <!-- composer removed; creation now via top-right 'New Poll' modal -->
+    </div>
+
+    <div class="col" id="my-col">
+      <h3>My Activity</h3>
+      <div id="my-posts"><h4>My Posts</h4></div>
+      <div id="my-polls"><h4>My Polls</h4></div>
+    </div>
+  </div>
+</div>
+
+<!-- Welcome modal shown on first visit -->
+<div id="community-welcome" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" style="display:none;"> 
+  <div class="card max-w-2xl p-8 text-center">
+    <h2 class="text-2xl font-bold mb-4">Welcome to the Community</h2>
+    <p class="mb-6">This is a safe space to share how you feel and ask for suggestions. Choose one to get started.</p>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="card p-6 cursor-pointer" id="welcome-post">
+        <h3 class="font-semibold">Posts</h3>
+        <p class="text-sm mt-2">Share your feelings, short updates or thoughts — react or respond kindly, like a community chat.</p>
+      </div>
+      <div class="card p-6 cursor-pointer" id="welcome-poll">
+        <h3 class="font-semibold">Polls</h3>
+        <p class="text-sm mt-2">Ask a question and offer options for others to vote on and suggest ideas.</p>
+      </div>
+    </div>
+    <div class="mt-6">
+      <button id="welcome-close" class="btn-primary">Maybe later</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // expose current user id for client-side filtering
+  {% if (user and user.is_authenticated) %}
+  window.CURRENT_USER_ID = {{ user.id | tojson }};
+  {% else %}
+  window.CURRENT_USER_ID = null;
+  {% endif %}
+</script>
+<script src="/static/js/community.js"></script>
+{% endblock %}

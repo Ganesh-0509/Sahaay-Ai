@@ -168,6 +168,7 @@
             <a href="{{ url_for('dashboard.dashboard') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard') %}sidebar-active{% endif %}">🏠 {{ lang.overview }}</a>
             <a href="{{ url_for('dashboard.dashboard_mood') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_mood') %}sidebar-active{% endif %}">📔 {{ lang.mood_journal }}</a>
             <a href="{{ url_for('dashboard.dashboard_tools') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_tools') %}sidebar-active{% endif %}">🧘 {{ lang.coping_tools }}</a>
+            <a href="{{ url_for('community.community_page') }}" class="sidebar-link {% if request.path.startswith('/community') %}sidebar-active{% endif %}">💬 Community support</a>
             <a href="{{ url_for('dashboard.dashboard_analytics') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_analytics') %}sidebar-active{% endif %}">📊 {{ lang.analytics }}</a>
             <a href="{{ url_for('dashboard.dashboard_settings') }}" class="sidebar-link {% if request.path == url_for('dashboard.dashboard_settings') %}sidebar-active{% endif %}">⚙ {{ lang.settings }}</a>
         </nav>
