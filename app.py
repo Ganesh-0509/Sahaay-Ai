@@ -1076,7 +1076,6 @@ def export_data():
         print("Data export failed:", e)
         flash('Failed to export data.', 'danger')
 
-
 # Register blueprints (keep as-is — ensures modular routes)
 from routes.auth_routes import auth_bp
 from routes.chat_routes import chat_bp
