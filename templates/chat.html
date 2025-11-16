@@ -529,8 +529,11 @@
 
   function toggleCrisisBanner(show) {
   if (!crisisBanner) return;
-  if (show) crisisBanner.classList.add('show');
-  else crisisBanner.classList.remove('show');
+  if (show) {
+    crisisBanner.classList.remove('hidden');
+  } else {
+    crisisBanner.classList.add('hidden');
+  }
 }
 
 // Update sendMessage
@@ -553,6 +556,7 @@ async function sendMessage(msg) {
     if (result.ok && result.data) {
       const botText = result.data.response || "I'm here to listen. Can you tell me more?";
       appendMessage(botText, 'bot', true);
+      console.log('Crisis detected:', result.data.crisis_detected);
       toggleCrisisBanner(!!result.data.crisis_detected);
     } else {
       const errMsg = result.message || 'Failed to send message.';
