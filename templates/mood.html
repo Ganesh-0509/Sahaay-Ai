@@ -3,152 +3,541 @@
 {% block title %}{{ lang.mood_journal }}{% endblock %}
 
 {% block content %}
-<header class="mb-8">
-  <div class="flex items-center gap-4">
-    <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">{{ lang.mood_journal }}</h1>
-  </div>
-  <p class="mt-2 text-gray-600 dark:text-gray-400">Weekly emotional summary, recurring themes & analytics.</p>
+<header class="flex justify-between items-center mb-8">
+    <div class="flex items-center gap-4">
+        <button id="menuBtn" class="text-gray-800 dark:text-gray-100 text-2xl font-bold md:hidden">☰</button>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ lang.mood_journal }}</h1>
+    </div>
 </header>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<section class="space-y-6">
 
-  <!-- Left column cards -->
-  <div class="lg:col-span-2 space-y-6">
-
-    <!-- Animated header + summary -->
-    <div class="card">
-      <div class="flex items-start justify-between">
-        <div>
-          <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100">🗓 Weekly Emotional Summary</h3>
-          <p id="weeklySummary" class="mt-2 text-gray-700 dark:text-gray-300">Loading summary…</p>
-        </div>
-        <div>
-          <button id="refreshSummary" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition">Refresh</button>
-        </div>
-      </div>
+    <!-- Recent Mood Entries -->
+    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+        <h3 class="text-xl font-semibold mb-3">{{ lang.recent_entries }}</h3>
+        <ul id="moodEntries" class="list-disc pl-5 max-h-64 overflow-y-auto">
+            <li>{{ lang.loading }}</li>
+        </ul>
     </div>
 
-    <!-- Previous Day Summarizer Card -->
-    <div class="card">
-      <div class="flex items-start justify-between">
-        <div>
-          <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100">📝 Previous Day Summary</h3>
-          <p id="prevDaySummary" class="mt-2 text-gray-700 dark:text-gray-300">Loading summary…</p>
+    <!-- Compact Today Header: mood, summary length, sentiment -->
+    <div class="card bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg flex flex-col md:flex-row items-start md:items-center gap-4">
+        <div class="flex-1">
+            <div class="text-sm text-gray-500">Today's Mood</div>
+            <div id="todayMoodLabel" class="text-2xl font-bold text-gray-800 dark:text-gray-100">—</div>
         </div>
-        <div>
-          <button id="refreshPrevDaySummary" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition">Refresh</button>
+        <div class="flex-1">
+            <div class="text-sm text-gray-500">Summary Length</div>
+            <div id="summaryLength" class="text-lg font-semibold text-gray-800 dark:text-gray-100">—</div>
         </div>
-      </div>
+        <div class="flex-1">
+            <div class="text-sm text-gray-500">Sentiment Score</div>
+            <div id="sentimentScore" class="text-lg font-semibold text-gray-800 dark:text-gray-100">—</div>
+        </div>
+        <div style="min-width:220px;" class="w-full md:w-auto">
+            <div class="text-sm text-gray-500">Mood Intensity</div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mt-1 overflow-hidden">
+                <div id="intensityBar" class="h-3 bg-gradient-to-r from-theme-primary to-theme-secondary" style="width:0%"></div>
+            </div>
+        </div>
     </div>
 
-    
+    <!-- Daily Summary Card -->
+    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+        <h3 class="text-xl font-semibold mb-3">{{ lang.daily_summary_title or 'Daily Summary' }}</h3>
+        <div id="dailyJournalContainer">
+            <p id="dailyJournalLoading">{{ lang.loading }}</p>
+        </div>
 
-    <!-- Themes -->
-    <div class="card">
-      <h4 class="font-semibold mb-3 text-gray-800 dark:text-gray-100">💬 Recurring Themes</h4>
-      <ul id="themeList" class="list-disc pl-5 text-gray-700 dark:text-gray-300"></ul>
-      <button id="loadAItopics" class="mt-3 px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition">Generate AI Themes</button>
+        <!-- journaling note + actions -->
+        <div class="mt-4">
+            <textarea id="userNote" rows="3" placeholder="Write a private note for today..." class="w-full p-3 rounded-md bg-white/50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"></textarea>
+            <div class="flex items-center gap-3 mt-2">
+                <button id="saveNoteBtn" class="btn-primary">Save Note</button>
+                <button id="printDailyBtn" class="btn-primary" style="background:transparent;border:1px solid rgba(138,108,255,0.25);">Print / Save PDF</button>
+                <div id="affirmationContainer" class="ml-auto text-sm text-gray-700 dark:text-gray-300"></div>
+            </div>
+        </div>
     </div>
 
-  </div>
+    <!-- Weekly Summaries Analytics + Table -->
+    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+        <h3 class="text-xl font-semibold mb-3">{{ lang.weekly_summaries_title or 'Last 7 Daily Summaries' }}</h3>
 
-  <!-- Right column: Highlights only -->
-  <aside class="space-y-6">
-    <div class="card">
-      <h4 class="font-semibold mb-2 text-gray-800 dark:text-gray-100">✨ Highlights</h4>
-      <p class="text-gray-700 dark:text-gray-300"><strong>Best day:</strong> <span id="bestDay">—</span></p>
-      <p class="mt-2 text-gray-700 dark:text-gray-300"><strong>Toughest day:</strong> <span id="worstDay">—</span></p>
+        <!-- Analytics summary row -->
+        <div id="weeklyAnalytics" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <!-- Most frequent mood -->
+            <div id="mostFreqMood" class="p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div class="text-sm text-gray-500">Most Frequent Mood</div>
+                <div class="text-lg font-semibold mt-1 text-gray-800 dark:text-gray-100">—</div>
+            </div>
+            <!-- Stability -->
+            <div id="moodStability" class="p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div class="text-sm text-gray-500">Weekly Stability</div>
+                <div class="text-lg font-semibold mt-1 text-gray-800 dark:text-gray-100">—</div>
+            </div>
+            <!-- Streak -->
+            <div id="moodStreak" class="p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div class="text-sm text-gray-500">Mood Streak</div>
+                <div class="text-lg font-semibold mt-1 text-gray-800 dark:text-gray-100">—</div>
+            </div>
+        </div>
+
+        <div id="weeklySummariesContainer">
+            <p id="weeklyLoading">{{ lang.loading }}</p>
+        </div>
     </div>
-  </aside>
 
-</div>
+    <!-- Weekly Mood Chart (separate card below the table) -->
+    <div class="card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg mt-4">
+        <h3 class="text-xl font-semibold mb-3">{{ lang.weekly_mood_chart_title or 'Week Mood Summary' }}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4" style="height:180px;">
+            <div class="w-full" style="height:180px;">
+                <canvas id="weeklyMoodChart" height="180"></canvas>
+            </div>
+            <div class="w-full" style="height:180px;">
+                <canvas id="weeklyMoodPie" height="180"></canvas>
+            </div>
+            <div class="w-full" style="height:180px;">
+                <canvas id="weeklySentimentLine" height="180"></canvas>
+            </div>
+        </div>
+    </div>
 
+    <!-- Add New Entry -->
+    <!-- Add New Entry removed to make Mood Journal read-only -->
+
+</section>
 {% endblock %}
 
 {% block page_scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-async function fetchInsights() {
-  // Fetch previous day summary
-  async function loadPrevDaySummary(force=false) {
-    const summaryElem = document.getElementById('prevDaySummary');
-    summaryElem.textContent = 'Loading summary…';
-    try {
-      const res = await fetch('/api/previous_day_summary');
-      const j = await res.json();
-      if(j.ok && j.summary) {
-        summaryElem.textContent = j.summary;
-      } else {
-        summaryElem.textContent = 'Could not generate summary.';
-      }
-    } catch (e) {
-      summaryElem.textContent = 'Error loading summary.';
-    }
-  }
-  document.getElementById('refreshPrevDaySummary').addEventListener('click', ()=> loadPrevDaySummary(true));
-  loadPrevDaySummary();
-  try {
-    const res = await fetch('/api/mood_insights?days=30');
-    const data = await res.json();
-    if(!data.ok) return console.error('No insights');
+    async function fetchMoodEntries() {
+        try {
+            const res = await fetch('/api/mood_data');
+            const data = await res.json();
+            const list = document.getElementById('moodEntries');
+            list.innerHTML = '';
 
-    // ...sentiment trend chart removed...
-
-    // Themes
-    const themeList = document.getElementById('themeList');
-    themeList.innerHTML = '';
-    const tRes = await fetch('/api/mood_themes?days=30');
-    const tData = await tRes.json();
-    if(tData.ok){
-      (tData.themes || []).slice(0,8).forEach(t=>{
-        const li = document.createElement('li');
-        li.textContent = t.keyword + (t.associated_mood ? ' — ' + t.associated_mood : '');
-        themeList.appendChild(li);
-      });
+            if (data.entries && data.entries.length > 0) {
+                // Show only one mood entry per day. Keep the most recent entry for each date.
+                const seen = new Set();
+                for (const e of data.entries) {
+                    if (seen.has(e.date)) continue;
+                    seen.add(e.date);
+                    const li = document.createElement('li');
+                    li.textContent = `[${e.date}] ${e.mood}`;
+                    list.appendChild(li);
+                }
+            } else {
+                list.innerHTML = '<li>{{ lang.journal_empty }}</li>';
+            }
+        } catch (e) {
+            console.error(e);
+        }
     }
 
-    // Best/Worst day
-    document.getElementById('bestDay').textContent = data.best_day ? (data.best_day.date + ' ('+data.best_day.sentiment+')') : '—';
-    document.getElementById('worstDay').textContent = data.worst_day ? (data.worst_day.date + ' ('+data.worst_day.sentiment+')') : '—';
-
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function loadWeeklySummary(force=false) {
-  try {
-    const res = await fetch('/api/mood_weekly_summary' + (force? '?force=true':''));
-    const j = await res.json();
-    if(j.ok){
-      document.getElementById('weeklySummary').textContent = j.summary;
-    } else {
-      document.getElementById('weeklySummary').textContent = 'Could not generate summary.';
+    fetchMoodEntries();
+    // utility to clean stored summary text (used by daily and weekly displays)
+    function cleanSummaryGlobal(raw) {
+        if (!raw) return '';
+        let s = raw.toString();
+        try {
+            const j = JSON.parse(s);
+            if (j && typeof j === 'object') {
+                if (j.response) return j.response.toString();
+                return Object.values(j).join(' ');
+            }
+        } catch (e) {
+            s = s.replace(/json\s*/i, '').replace(/<[^>]*>/g, '').trim();
+        }
+        s = s.replace(/\\n/g, '\n').replace(/^"|"$/g, '');
+        return s;
     }
-  } catch(e){
-    console.error(e);
-  }
-}
 
-document.getElementById('refreshSummary').addEventListener('click', ()=> loadWeeklySummary(true));
-document.getElementById('loadAItopics').addEventListener('click', async ()=>{
-  const res = await fetch('/api/mood_themes?ai=true');
-  const j = await res.json();
-  const themeList = document.getElementById('themeList');
-  if(j.ok && j.themes_ai && j.themes_ai.length){
-    j.themes_ai.slice(0,6).forEach(t=>{
-      const li = document.createElement('li');
-      li.textContent = t;
-      themeList.appendChild(li);
+    // fetch today's daily summary
+    async function fetchDailyJournal() {
+        try {
+            const container = document.getElementById('dailyJournalContainer');
+            container.innerHTML = '';
+            // Primary attempt: fetch the single-day entry
+            let res = await fetch('/api/daily_journal');
+            // If the response is not JSON (e.g. redirect to login), fall through to fallback
+            let data = null;
+            try {
+                data = await res.json();
+            } catch (err) {
+                data = null;
+            }
+
+            if (data && data.ok && data.entry && data.entry.summary) {
+                const summaryRaw = cleanSummaryGlobal(data.entry.summary || '');
+                const pre = document.createElement('pre');
+                pre.className = 'whitespace-pre-wrap text-gray-600 dark:text-gray-300';
+                // show a short preview with expand/collapse if long
+                const short = summaryRaw.length > 260 ? summaryRaw.slice(0,257) + '…' : summaryRaw;
+                pre.textContent = short;
+                if (summaryRaw.length > short.length) {
+                    const btn = document.createElement('button');
+                    btn.className = 'ml-2 text-xs text-theme-primary hover:underline';
+                    btn.textContent = 'Show more';
+                    btn.addEventListener('click', ()=>{
+                        if (pre.textContent === short) { pre.textContent = summaryRaw; btn.textContent = 'Show less'; }
+                        else { pre.textContent = short; btn.textContent = 'Show more'; }
+                    });
+                    container.appendChild(pre);
+                    container.appendChild(btn);
+                } else {
+                    container.appendChild(pre);
+                }
+                return;
+            }
+
+            // Fallback: fetch recent summaries and try to find today's entry there
+            try {
+                const listRes = await fetch('/api/daily_journal_list?limit=7');
+                const listData = await listRes.json();
+                if (listData && listData.ok && Array.isArray(listData.entries)) {
+                    // compute today's date string in YYYY-MM-DD to match stored doc ids
+                    const d = new Date();
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const todayKey = `${yyyy}-${mm}-${dd}`;
+                    const found = listData.entries.find(e => (e.date || '') === todayKey || (e.date || '').startsWith(todayKey));
+                    if (found && found.summary) {
+                        const pre2 = document.createElement('pre');
+                        pre2.className = 'whitespace-pre-wrap text-gray-600 dark:text-gray-300';
+                        pre2.textContent = found.summary;
+                        container.appendChild(pre2);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn('Fallback daily list fetch failed:', err);
+            }
+
+            // If we get here, no summary available
+            container.innerHTML = '<p class="text-gray-600 dark:text-gray-300">No summary for today.</p>';
+        } catch (e) {
+            console.error('Failed to fetch daily journal:', e);
+        }
+    }
+    fetchDailyJournal();
+    
+    // Weekly summaries (last 7 days)
+    async function fetchWeeklySummaries() {
+        try {
+            const res = await fetch('/api/daily_journal_list?limit=7');
+            const data = await res.json();
+            const container = document.getElementById('weeklySummariesContainer');
+            container.innerHTML = '';
+                    if (data.ok && data.entries && data.entries.length > 0) {
+                        // Bordered, compact table with trimmed summaries (one short line)
+                        const table = document.createElement('table');
+                        table.className = 'w-full text-left border-collapse rounded-md overflow-hidden';
+
+                        const thead = document.createElement('thead');
+                        thead.innerHTML = `
+                            <tr class="text-sm text-gray-500 bg-gray-50 dark:bg-gray-900">
+                                <th class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">Date</th>
+                                <th class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">Mood</th>
+                                <th class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">Summary</th>
+                            </tr>`;
+                        table.appendChild(thead);
+                        const tbody = document.createElement('tbody');
+
+                        // prepare data for chart aggregation
+                        const moodCounts = {};
+                        const entriesByDate = [];
+
+                        // cleaned summaries will use cleanSummaryGlobal defined earlier
+
+                        for (const e of data.entries) {
+                            const tr = document.createElement('tr');
+                            tr.className = 'align-top bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800';
+                            const tdDate = document.createElement('td');
+                            tdDate.className = 'px-4 py-3 text-sm text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-800';
+                            tdDate.textContent = e.date;
+                            const tdMood = document.createElement('td');
+                            tdMood.className = 'px-4 py-3 text-sm text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-800';
+                            const moodLabel = (e.mood || 'neutral').toString();
+                            // mood emoji + colored tag
+                            const moodMap = {
+                                'happy': {emoji: '😊', color: 'bg-yellow-200 text-yellow-800'},
+                                'sad': {emoji: '☹', color: 'bg-blue-100 text-blue-800'},
+                                'angry': {emoji: '😡', color: 'bg-red-100 text-red-800'},
+                                'anxious': {emoji: '😰', color: 'bg-orange-100 text-orange-800'},
+                                'normal': {emoji: '😐', color: 'bg-green-100 text-green-800'},
+                                'neutral': {emoji: '😶', color: 'bg-gray-100 text-gray-800'},
+                                'excited': {emoji: '🤩', color: 'bg-pink-100 text-pink-800'}
+                            };
+                            const key = moodLabel.toLowerCase();
+                            const mapItem = moodMap[key] || {emoji: '🙂', color: 'bg-purple-100 text-purple-800'};
+                            tdMood.innerHTML = `<span class="inline-flex items-center gap-2 px-2 py-1 rounded-full ${mapItem.color} text-xs font-medium"><span>${mapItem.emoji}</span><span class="capitalize">${key}</span></span>`;
+                            const tdSummary = document.createElement('td');
+                            tdSummary.className = 'px-4 py-3 text-sm text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-800';
+                            // convert stored summary into readable paragraph and support expand/collapse
+                            const rawSummary = cleanSummaryGlobal(e.summary || '');
+                            const lines = rawSummary.split(/\r?\n/).map(l => l.replace(/^\s*[-•\\u2022]?\s/, '').trim()).filter(Boolean);
+                            const sentences = lines.map(l => (/[\.\!\?]$/.test(l) ? l : l + '.'));
+                            const fullText = sentences.join(' ');
+                            const shortText = fullText.length > 140 ? fullText.slice(0, 137) + '…' : fullText;
+                            const p = document.createElement('p');
+                            p.className = 'text-sm text-gray-700 dark:text-gray-200';
+                            p.textContent = shortText;
+                            tdSummary.appendChild(p);
+                            if (fullText.length > shortText.length) {
+                                const btn = document.createElement('button');
+                                btn.className = 'ml-2 text-xs text-theme-primary hover:underline';
+                                btn.textContent = 'Show more';
+                                btn.addEventListener('click', () => {
+                                    if (p.textContent === shortText) {
+                                        p.textContent = fullText;
+                                        btn.textContent = 'Show less';
+                                    } else {
+                                        p.textContent = shortText;
+                                        btn.textContent = 'Show more';
+                                    }
+                                });
+                                tdSummary.appendChild(btn);
+                            }
+
+                            entriesByDate.push({date: e.date, mood: key, summary: fullText});
+
+                            tr.appendChild(tdDate);
+                            tr.appendChild(tdMood);
+                            tr.appendChild(tdSummary);
+                            tbody.appendChild(tr);
+
+                            // aggregate mood counts for chart
+                            moodCounts[key] = (moodCounts[key] || 0) + 1;
+                        }
+                        table.appendChild(tbody);
+                        container.appendChild(table);
+                        // build/update Chart.js bar chart below the table
+                        try {
+                            const chartCanvas = document.getElementById('weeklyMoodChart');
+                            // prepare labels and values
+                            const labels = Object.keys(moodCounts);
+                            const values = labels.map(l => moodCounts[l]);
+
+                            // destroy existing bar chart if present
+                            if (window._weeklyMoodChart instanceof Chart) {
+                                window._weeklyMoodChart.destroy();
+                            }
+                            const ctx = chartCanvas.getContext('2d');
+                            window._weeklyMoodChart = new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                                    datasets: [{
+                                        label: 'Days',
+                                        data: values,
+                                        backgroundColor: labels.map(l => {
+                                            if (l.includes('happy')) return 'rgba(99, 102, 241, 0.9)';
+                                            if (l.includes('sad')) return 'rgba(59, 130, 246, 0.9)';
+                                            if (l.includes('angry')) return 'rgba(239, 68, 68, 0.9)';
+                                            if (l.includes('anxious')) return 'rgba(234, 88, 12, 0.9)';
+                                            if (l.includes('normal')) return 'rgba(34,197,94,0.9)';
+                                            return 'rgba(139,92,246,0.9)';
+                                        }),
+                                        borderRadius: 6,
+                                        barPercentage: 0.6
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    animation: { duration: 600, easing: 'easeOutQuart' },
+                                    scales: {
+                                        x: { ticks: { color: '#cbd5e1' } },
+                                        y: { beginAtZero: true, ticks: { color: '#cbd5e1', precision:0 } }
+                                    },
+                                    plugins: { legend: { display: false } }
+                                }
+                            });
+                        } catch (chartErr) {
+                            console.error('Chart error:', chartErr);
+                        }
+
+                        // build/update pie chart for mood distribution
+                        try {
+                            const pieCanvas = document.getElementById('weeklyMoodPie');
+                            if (pieCanvas) {
+                                const pieCtx = pieCanvas.getContext('2d');
+                                if (window._weeklyMoodPie instanceof Chart) window._weeklyMoodPie.destroy();
+                                window._weeklyMoodPie = new Chart(pieCtx, {
+                                    type: 'pie',
+                                    data: {
+                                        labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                                        datasets: [{
+                                            data: values,
+                                            backgroundColor: labels.map(l => {
+                                                if (l.includes('happy')) return 'rgba(99, 102, 241, 0.9)';
+                                                if (l.includes('sad')) return 'rgba(59, 130, 246, 0.9)';
+                                                if (l.includes('angry')) return 'rgba(239, 68, 68, 0.9)';
+                                                if (l.includes('anxious')) return 'rgba(234, 88, 12, 0.9)';
+                                                if (l.includes('normal')) return 'rgba(34,197,94,0.9)';
+                                                return 'rgba(139,92,246,0.9)';
+                                            })
+                                        }]
+                                    },
+                                    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 600 } }
+                                });
+                            }
+                        } catch (pieErr) {
+                            console.error('Pie chart error:', pieErr);
+                        }
+
+                        // compute analytics: most frequent mood, stability, average score, streak, highlights
+                        const totalDays = entriesByDate.length;
+                        const mostFreq = Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0];
+                        const mostFreqLabel = mostFreq ? mostFreq[0] : '—';
+                        const mostFreqEl = document.getElementById('mostFreqMood');
+                        if (mostFreqEl) {
+                            const mapItem = (function(k){
+                                const base={emoji:'🙂'}; const m = {
+                                    'happy':{emoji:'😊'},'sad':{emoji:'☹'},'angry':{emoji:'😡'},'anxious':{emoji:'😰'},'normal':{emoji:'😐'},'neutral':{emoji:'😶'},'excited':{emoji:'🤩'}
+                                };
+                                return m[k]||base;
+                            })(mostFreqLabel);
+                            mostFreqEl.querySelector('div.text-lg').textContent = `${mapItem.emoji} ${mostFreqLabel.charAt(0).toUpperCase()+mostFreqLabel.slice(1)}`;
+                        }
+
+                        // stability: compute number of mood changes day-to-day
+                        let changes = 0;
+                        for (let i=1;i<entriesByDate.length;i++) if (entriesByDate[i].mood !== entriesByDate[i-1].mood) changes++;
+                        const stability = totalDays > 1 ? Math.round(((1 - (changes/(totalDays-1))) * 100)) : 100;
+                        const stabilityEl = document.getElementById('moodStability');
+                        if (stabilityEl) stabilityEl.querySelector('div.text-lg').textContent = `${stability}%`;
+
+                        // streak: count consecutive recent days with same mood or with logged mood
+                        let streak = 0; let prevDate = null; // compute consecutive dates from most recent entry
+                        const today = new Date();
+                        // sort entriesByDate by date desc
+                        entriesByDate.sort((a,b)=>b.date.localeCompare(a.date));
+                        for (let i=0;i<entriesByDate.length;i++) {
+                            const ed = entriesByDate[i];
+                            // basic presence streak: count consecutive entries from most recent until a missing day appears (not exact calendar days)
+                            if (i===0) { streak = 1; prevDate = ed.date; continue; }
+                            // if next entry exists (we don't require exact day gaps since summaries might be missing), increment
+                            streak++;
+                        }
+                        const streakEl = document.getElementById('moodStreak');
+                        if (streakEl) streakEl.querySelector('div.text-lg').textContent = `${streak} day${streak===1?'':'s'}`;
+
+                        // populate header (today mood, summary length, sentiment)
+                        try {
+                            const today = new Date();
+                            const yyyy = today.getFullYear(); const mm = String(today.getMonth()+1).padStart(2,'0'); const dd = String(today.getDate()).padStart(2,'0');
+                            const todayKey = `${yyyy}-${mm}-${dd}`;
+                            const todayEntry = entriesByDate.find(e=>e.date===todayKey || (e.date||'').startsWith(todayKey));
+                            if (todayEntry) {
+                                document.getElementById('todayMoodLabel').textContent = (todayEntry.mood || 'neutral').charAt(0).toUpperCase()+ (todayEntry.mood||'').slice(1);
+                                const sCount = (todayEntry.summary||'').split(/[\.\!\?]\s+/).filter(Boolean).length || 0;
+                                document.getElementById('summaryLength').textContent = `${sCount} sentence${sCount===1?'':'s'}`;
+                                const sentEl = document.getElementById('sentimentScore');
+                                if (todayEntry.avg_sentiment !== null && todayEntry.avg_sentiment !== undefined) {
+                                    const val = Number(todayEntry.avg_sentiment) || 0;
+                                    sentEl.textContent = val.toFixed(2);
+                                    // set intensity bar: map -1..1 to 0..100
+                                    const pct = Math.round(((val + 1) / 2) * 100);
+                                    document.getElementById('intensityBar').style.width = pct + '%';
+                                } else {
+                                    sentEl.textContent = 'N/A';
+                                }
+                            }
+                        } catch(e){console.warn('header populate failed', e)}
+
+                        // weekly sentiment trend line
+                        try {
+                            const trendCanvas = document.getElementById('weeklySentimentLine');
+                            if (trendCanvas) {
+                                const trendLabels = entriesByDate.slice().reverse().map(e=>e.date);
+                                const trendVals = entriesByDate.slice().reverse().map(e=> (e.avg_sentiment!==null && e.avg_sentiment!==undefined) ? Number(e.avg_sentiment) : 0 );
+                                if (window._weeklySentimentChart instanceof Chart) window._weeklySentimentChart.destroy();
+                                window._weeklySentimentChart = new Chart(trendCanvas.getContext('2d'), {
+                                    type: 'line', data: { labels: trendLabels, datasets:[{ label:'Sentiment', data: trendVals, borderColor:'rgba(138,108,255,0.95)', backgroundColor:'rgba(138,108,255,0.12)', tension:0.3, pointRadius:4 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}} }
+                                });
+                            }
+                        } catch(e){console.warn('trend chart failed', e)}
+            } else {
+                container.innerHTML = '<p class="text-gray-600 dark:text-gray-300">No summaries available.</p>';
+            }
+        } catch (err) {
+            console.error('Failed to fetch weekly summaries:', err);
+        }
+    }
+
+    // initial load and polling to auto-update when new summaries are saved
+    fetchWeeklySummaries();
+    setInterval(fetchWeeklySummaries, 30000); // refresh every 30s
+
+    // Save user's private note for today
+    document.getElementById('saveNoteBtn').addEventListener('click', async () => {
+        const note = document.getElementById('userNote').value || '';
+        try {
+            const res = await fetch('/api/save_journal_note', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({note}) });
+            const data = await res.json();
+            if (data.ok) {
+                document.getElementById('saveNoteBtn').textContent = 'Saved';
+                setTimeout(()=>document.getElementById('saveNoteBtn').textContent = 'Save Note', 2000);
+            } else {
+                alert('Failed to save note: ' + (data.error || 'unknown'));
+            }
+        } catch (err) {
+            console.error('Save note failed', err);
+            alert('Save note failed');
+        }
     });
-  } else {
-    alert('AI themes not available right now.');
-  }
-});
 
-// initial load
-fetchInsights();
-loadWeeklySummary();
+    // Print / Save daily summary (open print view)
+    document.getElementById('printDailyBtn').addEventListener('click', async ()=>{
+        try {
+            // get today's summary HTML from container
+            const container = document.getElementById('dailyJournalContainer');
+            const html = `
+                <html><head><title>Daily Summary</title></head><body style="font-family:sans-serif;padding:20px;">
+                <h1>Daily Summary</h1>
+                <div>${container.innerHTML}</div>
+                </body></html>`;
+            const w = window.open('', '_blank');
+            if (!w) { alert('Popup blocked. Please allow popups to print.'); return; }
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+            // give the window a moment, then open print dialog
+            setTimeout(()=>{ w.print(); }, 500);
+        } catch (err) { console.error('Print error', err); alert('Failed to open print view'); }
+    });
+
+    // Generate Weekly Reflection (AI-backed) and show it
+    async function generateWeeklyReflection() {
+        try {
+            const btn = document.createElement('button');
+            // disable repeated calls
+            const resp = await fetch('/api/generate_weekly_reflection', { method: 'POST' });
+            const data = await resp.json();
+            if (data.ok) {
+                // show reflection in the weekly analytics area
+                let el = document.getElementById('weeklyReflection');
+                if (!el) {
+                    el = document.createElement('div'); el.id='weeklyReflection'; el.className='mt-3 p-3 rounded-md bg-gray-50 dark:bg-gray-900';
+                    document.querySelector('#weeklyAnalytics').appendChild(el);
+                }
+                el.textContent = data.reflection || 'No reflection generated.';
+            } else {
+                alert('Failed: '+(data.error||'unknown'));
+            }
+        } catch (err) { console.error('Reflection generation failed', err); alert('Reflection generation failed'); }
+    }
+
+    // create a small 'Generate Weekly Reflection' control
+    const reflectBtn = document.createElement('button');
+    reflectBtn.className = 'btn-primary mt-2';
+    reflectBtn.textContent = 'Generate Weekly Reflection';
+    reflectBtn.addEventListener('click', generateWeeklyReflection);
+    document.getElementById('weeklyAnalytics').appendChild(reflectBtn);
 </script>
 {% endblock %}

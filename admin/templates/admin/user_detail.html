@@ -1,0 +1,102 @@
+{% extends 'admin/base.html' %}
+{% block title %}User Details - Sahaay Admin{% endblock %}
+
+{% block content %}
+<div class="bg-blue-900 p-6 rounded shadow mb-6">
+    <h2 class="text-2xl font-bold mb-2">{{ user.name }}</h2>
+    <p>Email: {{ user.email }}</p>
+    <p>Language: {{ user.language }}</p>
+    <p>Created At: {{ user.created_at }}</p>
+    <form method="post" action="{{ url_for('admin.admin_delete_user', user_id=user.id) }}" onsubmit="return confirm('Delete user?');">
+        <button type="submit" class="btn btn-danger mt-2">Delete User</button>
+    </form>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="bg-blue-900 p-6 rounded shadow">
+        <h3 class="font-bold mb-2">Mood History</h3>
+        <ul>
+            {% for mood in mood_list %}
+            <li>{{ mood }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="bg-blue-900 p-6 rounded shadow">
+        <h3 class="font-bold mb-2">Sentiment Trend</h3>
+        <canvas id="userSentimentChart"></canvas>
+    </div>
+</div>
+<div class="bg-blue-900 p-6 rounded shadow mb-6">
+    <h3 class="font-bold mb-2">Check-ins</h3>
+    <table class="w-full text-white">
+        <thead>
+            <tr>
+                <th>Mood</th>
+                <th>Sentiment</th>
+                <th>Time</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in checkins %}
+            <tr>
+                <td>{{ c.mood }}</td>
+                <td>{{ c.sentiment }}</td>
+                <td>{{ c.created_at }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('admin.admin_delete_checkin', user_id=user.id, checkin_id=c.id) }}" onsubmit="return confirm('Delete check-in?');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="bg-blue-900 p-6 rounded shadow mb-6">
+    <h3 class="font-bold mb-2">Conversations</h3>
+    <table class="w-full text-white">
+        <thead>
+            <tr>
+                <th>Message</th>
+                <th>Time</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for conv in conversations %}
+            <tr>
+                <td>{{ conv.message }}</td>
+                <td>{{ conv.created_at }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('admin.admin_delete_conversation', user_id=user.id, conv_id=conv.id) }}" onsubmit="return confirm('Delete conversation?');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script type="text/javascript">
+    var sentimentData = [];
+    try {
+        sentimentData = JSON.parse('{{ sentiment_trend|tojson|safe }}');
+    } catch (e) {
+        sentimentData = [];
+    }
+    var ctxUser = document.getElementById('userSentimentChart').getContext('2d');
+    new Chart(ctxUser, {
+        type: 'line',
+        data: {
+            labels: Array.from({length: sentimentData.length}, (_, i) => i+1),
+            datasets: [{
+                label: 'Sentiment',
+                data: sentimentData,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.2)',
+                fill: true,
+            }]
+        }
+    });
+</script>
+{% endblock %}

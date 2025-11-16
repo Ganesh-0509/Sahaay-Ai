@@ -1076,17 +1076,22 @@ def export_data():
         print("Data export failed:", e)
         flash('Failed to export data.', 'danger')
 
+
 # Register blueprints (keep as-is — ensures modular routes)
 from routes.auth_routes import auth_bp
 from routes.chat_routes import chat_bp
 from routes.dashboard_routes import dash_bp
 from routes.misc_routes import misc_bp
 from routes.api_routes import api_bp
+from admin import admin_bp
 app.register_blueprint(auth_bp)
 app.register_blueprint(chat_bp)
 app.register_blueprint(dash_bp)
 app.register_blueprint(misc_bp)
 app.register_blueprint(api_bp)
+
+# Register admin blueprint (isolated)
+app.register_blueprint(admin_bp)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))

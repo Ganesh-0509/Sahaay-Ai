@@ -89,25 +89,43 @@
         <button class="px-2 py-1">😢</button>
         <button class="px-2 py-1">😰</button>
         <button class="px-2 py-1">😌</button>
-        <button class="px-2 py-1">❤️</button>
+        <button class="px-2 py-1">❤</button>
       </div>
     </div>
 
     <!-- Input Area -->
     <div class="flex gap-2 items-center p-3 border-t border-theme-primary bg-theme-panel">
+      <div class="flex items-center gap-2 w-full">
       <input 
         id="message" 
         type="text" 
         placeholder="{{ lang.input_placeholder }}"
         class="flex-1 p-3 rounded-xl border-theme-primary focus:outline-none 
                focus:ring-2 focus:ring-theme-accent bg-theme-panel text-theme-text-main">
+      <!-- Microphone controls -->
+      <div class="flex items-center gap-2">
+        <div id="micContainer" class="relative">
+          <button id="micBtn" aria-label="Start voice input" title="Voice input" class="w-12 h-12 rounded-full bg-gradient-to-r from-theme-primary to-theme-secondary text-white flex items-center justify-center shadow-lg hover:scale-105 transition focus:outline-none" aria-pressed="false">
+            <i data-lucide="mic" id="micIcon"></i>
+          </button>
+          <div id="micListening" class="absolute -top-8 left-1/2 -translate-x-1/2 text-xs text-theme-text-subtle hidden">Listening…</div>
+        </div>
 
-      <button id="sendBtn" 
-        class="flex items-center gap-2 btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition">
-        <i data-lucide="send"></i>
-        <span id="sendText">{{ lang.send_button }}</span>
-        <span id="sendSpinner" class="hidden"><span class="send-spinner"></span></span>
-      </button>
+        <div class="flex items-center text-sm text-theme-text-subtle">
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input id="holdToTalk" type="checkbox" class="sr-only">
+            <span class="px-2 py-1 rounded bg-theme-panel border border-theme-primary text-xs">Press-and-hold</span>
+          </label>
+        </div>
+
+        <button id="sendBtn" 
+          class="flex items-center gap-2 btn-primary px-6 py-3 rounded-xl hover:opacity-90 transition">
+          <i data-lucide="send"></i>
+          <span id="sendText">{{ lang.send_button }}</span>
+          <span id="sendSpinner" class="hidden"><span class="send-spinner"></span></span>
+        </button>
+      </div>
+      </div>
     </div>
   </div>
 
@@ -210,6 +228,7 @@
   const resetConsentBtn = document.getElementById('resetConsentBtn');
   const emojiButtons = document.querySelectorAll('.emoji-row button');
   const helpResourcesBtn = document.getElementById('helpResourcesBtn');
+  const micContainer = document.getElementById('micContainer');
 
   // Dropdown
   const userDropdownBtn = document.getElementById('userDropdownBtn');
@@ -558,6 +577,129 @@ helpResourcesBtn?.addEventListener('click', () => {
 
   sendBtn.addEventListener('click', () => sendMessage(input.value));
   input.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(input.value); });
+
+  // ===== Speech-to-Text helper (useSpeechToText-like API) =====
+  function useSpeechToText(opts = {}) {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    let recognition = null;
+    let isRecording = false;
+    let transcript = '';
+    let error = null;
+    const config = Object.assign({ continuous: true, interimResults: true, lang: 'en-IN' }, opts);
+
+    function start() {
+      if (!Recognition) { error = 'SpeechRecognition not supported'; onError(error); return; }
+      if (isRecording) return;
+      recognition = new Recognition();
+      recognition.continuous = !!config.continuous;
+      recognition.interimResults = !!config.interimResults;
+      recognition.lang = config.lang || 'en-IN';
+
+      recognition.onstart = () => {
+        isRecording = true; error = null; onStart();
+      };
+
+      recognition.onresult = (ev) => {
+        let interim = '';
+        let final = '';
+        for (let i = ev.resultIndex; i < ev.results.length; ++i) {
+          const r = ev.results[i];
+          if (r.isFinal) final += r[0].transcript;
+          else interim += r[0].transcript;
+        }
+        // keep interim in transcript until finalized
+        transcript = (final || '') + (interim ? interim : '');
+        onResult(transcript, final);
+      };
+
+      recognition.onerror = (ev) => {
+        error = ev.error || 'Speech recognition error';
+        onError(error, ev);
+      };
+
+      recognition.onend = () => {
+        // final result will have been set in onresult; mark stopped
+        isRecording = false;
+        onEnd(transcript);
+      };
+
+      try {
+        recognition.start();
+      } catch (e) { onError(e.message || 'start failed'); }
+    }
+
+    function stop() {
+      if (!recognition) return;
+      try { recognition.stop(); } catch (e) { /* ignore */ }
+      recognition = null;
+    }
+
+    // callbacs to be overridden by consumer
+    function onResult(t, finalText) { /* override */ }
+    function onError(err, ev) { showToast('Speech error: '+err, 'error'); }
+    function onStart() { /* override */ }
+    function onEnd(finalText) { /* override */ }
+
+    return { start, stop, get isRecording() { return isRecording; }, get transcript() { return transcript; }, get error() { return error; }, set onResult(cb){ onResult = cb; }, set onError(cb){ onError = cb; }, set onStart(cb){ onStart = cb; }, set onEnd(cb){ onEnd = cb; } };
+  }
+
+  // UI wiring for speech-to-text
+  (function setupMic() {
+    const micBtnEl = document.getElementById('micBtn');
+    const micIcon = document.getElementById('micIcon');
+    const micListeningEl = document.getElementById('micListening');
+    const holdCheckbox = document.getElementById('holdToTalk');
+
+    const stt = useSpeechToText({ continuous: true, interimResults: true, lang: 'en-IN' });
+
+    // update UI helpers
+    function setRecordingUI(on) {
+      micBtnEl.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (on) {
+        micListeningEl.classList.remove('hidden');
+        micBtnEl.classList.add('animate-pulse');
+        micIcon.setAttribute('data-lucide', 'mic-off');
+      } else {
+        micListeningEl.classList.add('hidden');
+        micBtnEl.classList.remove('animate-pulse');
+        micIcon.setAttribute('data-lucide', 'mic');
+      }
+      lucide.createIcons();
+    }
+
+    stt.onResult = (transcript, finalText) => {
+      // show interim in placeholder of input, final into value
+      if (finalText && finalText.trim()) {
+        input.value = finalText.trim();
+      } else {
+        // interim
+        input.value = transcript;
+      }
+    };
+    stt.onError = (err) => { showToast('Speech error: '+err, 'error'); setRecordingUI(false); };
+    stt.onStart = () => setRecordingUI(true);
+    stt.onEnd = (finalText) => { setRecordingUI(false); if (finalText && finalText.trim()) { input.value = finalText.trim(); input.focus(); } };
+
+    // Click to toggle when not hold-to-talk
+    micBtnEl.addEventListener('click', (e) => {
+      if (holdCheckbox.checked) return; // in hold mode click is ignored
+      if (stt.isRecording) stt.stop(); else stt.start();
+    });
+
+    // Press-and-hold behavior
+    micBtnEl.addEventListener('mousedown', (e) => { if (!holdCheckbox.checked) return; e.preventDefault(); stt.start(); });
+    document.addEventListener('mouseup', (e) => { if (!holdCheckbox.checked) return; if (stt.isRecording) stt.stop(); });
+    // touch events for mobile
+    micBtnEl.addEventListener('touchstart', (e) => { if (!holdCheckbox.checked) return; e.preventDefault(); stt.start(); });
+    micBtnEl.addEventListener('touchend', (e) => { if (!holdCheckbox.checked) return; e.preventDefault(); if (stt.isRecording) stt.stop(); });
+
+    // feature detection
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      // show a small warning near mic
+      const warn = document.createElement('div'); warn.className='text-xs text-theme-pulse ml-2'; warn.textContent='Voice not supported'; micContainer.appendChild(warn);
+      micBtnEl.disabled = true; micBtnEl.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  })();
 
   // ======= Fetch user display name and initial flow =======
   async function fetchUserDisplayName() {

@@ -1,0 +1,225 @@
+{% extends 'admin/base.html' %}
+{% block title %}Dashboard - Sahaay Admin{% endblock %}
+
+{% block content %}
+<!-- Page header -->
+<div class="mb-8">
+    <h1 class="text-white text-3xl font-bold mb-2">Dashboard</h1>
+    <p class="text-admin-gray text-base">Overview of your mental health platform</p>
+</div>
+
+<!-- KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Users -->
+    <div class="bg-admin-card shadow-md rounded-2xl p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-admin-gray text-sm font-medium mb-1">Total Users</p>
+                <h3 class="text-white text-3xl font-bold" aria-label="{{ total_users }} total users">{{ total_users }}</h3>
+            </div>
+            <div class="text-4xl">👥</div>
+        </div>
+    </div>
+    
+    <!-- Total Check-ins -->
+    <div class="bg-admin-card shadow-md rounded-2xl p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-admin-gray text-sm font-medium mb-1">Total Check-ins</p>
+                <h3 class="text-white text-3xl font-bold" aria-label="{{ total_checkins }} total check-ins">{{ total_checkins }}</h3>
+            </div>
+            <div class="text-4xl">📝</div>
+        </div>
+    </div>
+    
+    <!-- Avg Sentiment -->
+    <div class="bg-admin-card shadow-md rounded-2xl p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-admin-gray text-sm font-medium mb-1">Avg Sentiment Today</p>
+                <h3 class="text-white text-3xl font-bold" aria-label="Average sentiment {{ avg_sentiment }}">{{ avg_sentiment }}</h3>
+            </div>
+            <div class="text-4xl">📊</div>
+        </div>
+    </div>
+    
+    <!-- Dominant Mood -->
+    <div class="bg-admin-card shadow-md rounded-2xl p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-admin-gray text-sm font-medium mb-1">Dominant Mood</p>
+                <h3 class="text-white text-2xl font-bold capitalize" aria-label="Dominant mood is {{ dominant_mood }}">{{ dominant_mood }}</h3>
+            </div>
+            <div class="text-4xl">😊</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Mood Distribution -->
+    <div class="bg-admin-card shadow-md rounded-2xl p-6">
+        <h3 class="text-white text-lg font-semibold mb-4">Mood Distribution</h3>
+        <div class="h-72">
+            <canvas id="moodPieChart" aria-label="Pie chart showing mood distribution"></canvas>
+        </div>
+    </div>
+    
+    <!-- Sentiment Trend -->
+    <div class="bg-admin-card shadow-md rounded-2xl p-6">
+        <h3 class="text-white text-lg font-semibold mb-4">Sentiment Trend</h3>
+        <div class="h-72">
+            <canvas id="sentimentLineChart" aria-label="Line chart showing sentiment trend over time"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Latest Check-ins Table -->
+<div class="bg-admin-card shadow-md rounded-2xl p-6">
+    <h3 class="text-white text-lg font-semibold mb-4">Latest 10 Check-ins</h3>
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-blue-700">
+                    <th class="text-left py-3 px-4 text-sm font-semibold text-gray-200 uppercase">User ID</th>
+                    <th class="text-left py-3 px-4 text-sm font-semibold text-gray-200 uppercase">Mood</th>
+                    <th class="text-left py-3 px-4 text-sm font-semibold text-gray-200 uppercase">Sentiment</th>
+                    <th class="text-left py-3 px-4 text-sm font-semibold text-gray-200 uppercase">Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if latest_checkins %}
+                    {% for c in latest_checkins %}
+                    <tr class="border-b border-blue-800 hover:bg-admin-hover transition-colors">
+                        <td class="py-3 px-4 text-white text-sm">{{ c.get('user_id', 'N/A')[:8] }}...</td>
+                        <td class="py-3 px-4 text-white text-sm capitalize">{{ c.get('mood') or c.get('mood_dominant', 'N/A') }}</td>
+                        <td class="py-3 px-4 text-white text-sm">{{ c.get('sentiment', c.get('avg_sentiment', 0))|round(2) }}</td>
+                        <td class="py-3 px-4 text-admin-gray text-sm">
+                            {% if c.get('timestamp') or c.get('created_at') %}
+                                {{ (c.get('timestamp') or c.get('created_at')).strftime('%Y-%m-%d %H:%M') if (c.get('timestamp') or c.get('created_at')) else '-' }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="py-8 px-4 text-center text-admin-gray">No check-ins available</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Parse data from backend
+    var moodData = {};
+    var sentimentData = [];
+    try {
+        moodData = JSON.parse('{{ mood_dist|tojson|safe }}');
+        sentimentData = JSON.parse('{{ sentiment_trend|tojson|safe }}');
+    } catch (e) {
+        console.error('Error parsing chart data:', e);
+        moodData = {};
+        sentimentData = [];
+    }
+
+    // Mood Pie Chart
+    var moodLabels = Object.keys(moodData);
+    var moodCounts = Object.values(moodData);
+    var ctxPie = document.getElementById('moodPieChart');
+    
+    if (ctxPie && moodLabels.length > 0) {
+        new Chart(ctxPie, {
+            type: 'pie',
+            data: {
+                labels: moodLabels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                datasets: [{
+                    data: moodCounts,
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
+                    borderWidth: 2,
+                    borderColor: '#0f2a52'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#d1d5db',
+                            padding: 15,
+                            font: { size: 12 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Sentiment Line Chart
+    var ctxLine = document.getElementById('sentimentLineChart');
+    
+    if (ctxLine && sentimentData.length > 0) {
+        new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: sentimentData.length}, (_, i) => `Entry ${i + 1}`),
+                datasets: [{
+                    label: 'Sentiment Score',
+                    data: sentimentData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#d1d5db',
+                            font: { size: 12 }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#d1d5db'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#d1d5db',
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

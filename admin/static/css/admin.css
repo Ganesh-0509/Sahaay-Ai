@@ -1,0 +1,42 @@
+body, .admin-bg {
+    background: #0a192f;
+    color: #fff;
+}
+.admin-sidenav {
+    background: #1e3a8a;
+}
+.admin-content {
+    background: #0a192f;
+}
+.card, .bg-blue-900 {
+    background: #1e3a8a;
+    color: #fff;
+}
+.bg-blue-950 {
+    background: #0a192f;
+}
+.btn-primary {
+    background: #2563eb;
+    color: #fff;
+}
+.btn-secondary {
+    background: #64748b;
+    color: #fff;
+}
+.btn-danger {
+    background: #ef4444;
+    color: #fff;
+}
+input, select {
+    background: #0a192f;
+    color: #fff;
+    border: 1px solid #2563eb;
+}
+.alert-danger {
+    background: #ef4444;
+    color: #fff;
+}
+.alert-success {
+    background: #22c55e;
+    color: #fff;
+}
