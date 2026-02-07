@@ -16,17 +16,9 @@ class GeminiAgent:
             self.client = genai.Client(api_key=api_key)
             self.model = "gemini-2.0-flash"  # Using the latest flash model
             
-            # Test the configuration
-            test_response = self.client.models.generate_content(
-                model=self.model,
-                contents="Test connection"
-            )
-            if not test_response:
-                raise Exception("Failed to generate test response")
-                
         except Exception as e:
-            print(f"Error initializing Gemini model: {str(e)}")
-            raise ValueError(f"Failed to initialize Gemini model: {str(e)}")
+            print(f"Error initializing Gemini client: {str(e)}")
+            raise ValueError(f"Failed to initialize Gemini client: {str(e)}")
             
         self.system_prompt = SYSTEM_PROMPT
 
@@ -44,38 +36,48 @@ class GeminiAgent:
 
             prompt = f"{self.system_prompt}{lang_instruction}\n\nUser: {message_text}"
 
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=prompt
-            )
+            # Try primary model first, then fallback to 2.5-flash, then 2.0-flash-lite
+            models_to_try = [self.model, "gemini-2.5-flash", "gemini-2.0-flash-lite"]
+            response = None
+            last_error = ""
+
+            for model in models_to_try:
+                try:
+                    response = self.client.models.generate_content(
+                        model=model,
+                        contents=prompt
+                    )
+                    if response and response.text:
+                        break # Success!
+                except Exception as e:
+                    last_error = str(e)
+                    if "429" in last_error or "RESOURCE_EXHAUSTED" in last_error:
+                        print(f"Quota exceeded for {model}, trying fallback...")
+                        continue
+                    else:
+                        raise # Rethrow non-quota errors
 
             if response and response.text:
                 response_text = response.text.strip()
-
                 # Clean markdown wrappers
                 response_text = response_text.replace("```json", "").replace("```", "").strip()
 
                 try:
                     parsed_json = json.loads(response_text)
-
-                    # ALWAYS return JSON wrapper
-                    return json.dumps({
-                        "response": parsed_json.get("response", "")
-                    })
-
+                    return json.dumps({"response": parsed_json.get("response", "")})
                 except:
-                    # Force wrap into JSON
-                    return json.dumps({
-                        "response": response_text
-                    })
-
+                    return json.dumps({"response": response_text})
             else:
                 return json.dumps({
-                    "response": "I'm sorry, I'm unable to reply right now."
+                    "response": "I'm currently at my limit for free AI responses. Please try again in a few minutes! 🙏"
                 })
 
         except Exception as e:
             print(f"Gemini API error: {str(e)}")
+            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                return json.dumps({
+                    "response": "The AI is a bit busy right now (quota reached). Please try again in a moment! 🌱"
+                })
             return json.dumps({
                 "response": "Something went wrong. Please try again."
             })

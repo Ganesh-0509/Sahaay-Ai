@@ -41,12 +41,25 @@ def chat():
     # Sentiment & emotion
     sentiment_score = get_sentiment_score(message)
     coarse_mood = get_coarse_mood(sentiment_score)
-    fine_mood = classify_emotion(message)
-    mood = fine_mood or coarse_mood
-
-    # GEMINI
+    
+    # GEMINI client for emotion classification
     from flask import current_app
     api_key = current_app.config.get("GEMINI_API_KEY")
+    
+    if not api_key:
+        return jsonify({"ok": False, "message": "AI model not configured."}), 500
+    
+    # Use LLM-based emotion detection with fallback
+    from google import genai
+    try:
+        gemini_client = genai.Client(api_key=api_key)
+        fine_mood = classify_emotion(message, client=gemini_client)
+    except:
+        fine_mood = classify_emotion(message)  # Fallback to keywords
+    
+    mood = fine_mood or coarse_mood
+
+    # GEMINI for conversation
 
     if not api_key:
         return jsonify({"ok": False, "message": "AI model not configured."}), 500
@@ -92,70 +105,11 @@ def chat():
     coping_tip = coping_tip_agent.generate_tip(mood)
 
     # Save check-in to Firestore
-    from flask import current_app
-    from datetime import datetime, timezone
-    from google.cloud import firestore
+    from utils.helpers import save_checkin
     from app import db
     
     if db:
-        try:
-            from utils.emotion_classifier import parse_final_mood
-            mood_list, mood_label = parse_final_mood(mood)
-            dominant = mood_list[0] if mood_list else "neutral"
-
-            # Use consistent date format across the application
-            today = datetime.now(timezone.utc).date()
-            today_str = today.strftime("%Y-%m-%d")
-            checkins_ref = db.collection(f"users/{user_id}/checkins")
-
-            docs = list(checkins_ref.where("date", "==", today_str).stream())
-
-            if docs:
-                # Update existing check-in for today
-                doc = docs[0]
-                data = doc.to_dict() or {}
-
-                sentiments = data.get("sentiments", [])
-                sentiments.append(sentiment_score)
-                avg_sentiment = sum(sentiments) / len(sentiments)
-
-                old_moods = data.get("mood_list", [])
-                new_moods = old_moods + mood_list
-
-                doc.reference.update({
-                    "sentiments": sentiments,
-                    "avg_sentiment": avg_sentiment,
-                    "mood_list": new_moods,
-                    "mood_label": mood_label,
-                    "mood_dominant": dominant,
-                    "language": lang,
-                    "last_text": message,
-                    "coping_tip": coping_tip,
-                    "timestamp": firestore.SERVER_TIMESTAMP,
-                    "updated_at": firestore.SERVER_TIMESTAMP
-                })
-                print(f"✓ Updated check-in for user {user_id} on {today_str}")
-            else:
-                # Create new check-in for today
-                checkins_ref.add({
-                    "date": today_str,
-                    "sentiments": [sentiment_score],
-                    "avg_sentiment": sentiment_score,
-                    "mood_list": mood_list,
-                    "mood_label": mood_label,
-                    "mood_dominant": dominant,
-                    "language": lang,
-                    "last_text": message,
-                    "coping_tip": coping_tip,
-                    "helpful": False,
-                    "timestamp": firestore.SERVER_TIMESTAMP,
-                    "created_at": firestore.SERVER_TIMESTAMP
-                })
-                print(f"✓ Created check-in for user {user_id} on {today_str}")
-        except Exception as e:
-            print(f"Failed to save check-in for user {user_id}:", e)
-            import traceback
-            traceback.print_exc()
+        save_checkin(db, user_id, mood, lang, message, sentiment_score, intent="chat", helpful_tip=coping_tip)
 
     final_response = {
         "response": response_data.get("response", "I'm here for you. Can you tell me more?"),

@@ -25,17 +25,23 @@ def home_data():
             "helpful": []
         })
     
+    from translations.translation_utils import translate_mood
+    from flask import session
+    user_lang = session.get('language', 'en')
+    
     try:
         checkins_ref = db.collection(f"users/{user_id}/checkins")
         
         # Determine query based on period
         if period == 'last10':
-            docs = list(checkins_ref.order_by("date", direction="DESCENDING").limit(10).stream())
+            docs_stream = checkins_ref.order_by("date", direction="DESCENDING").limit(10).stream()
         elif period == 'last7days':
             seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
-            docs = list(checkins_ref.where("date", ">=", seven_days_ago).order_by("date", direction="DESCENDING").stream())
+            docs_stream = checkins_ref.where("date", ">=", seven_days_ago).order_by("date", direction="DESCENDING").stream()
         else:  # all
-            docs = list(checkins_ref.order_by("date", direction="DESCENDING").limit(100).stream())
+            docs_stream = checkins_ref.order_by("date", direction="DESCENDING").limit(100).stream()
+        
+        docs = list(docs_stream)
         
         # Process data
         recent_checkins = []
@@ -45,33 +51,42 @@ def home_data():
         for doc in docs:
             data = doc.to_dict()
             if data:
-                date = data.get("date", "")
-                mood = data.get("mood_dominant", data.get("mood_label", "neutral"))
+                date_raw = data.get("date", "")
+                # Format date for display
+                try:
+                    date_obj = datetime.strptime(date_raw, "%Y-%m-%d")
+                    date_display = date_obj.strftime("%b %d, %Y")
+                except:
+                    date_display = date_raw
+
+                mood_raw = data.get("mood_dominant", data.get("mood_label", "neutral"))
+                mood_translated = translate_mood(mood_raw, user_lang)
                 coping_tip = data.get("coping_tip", "")
                 is_helpful = data.get("helpful", False)
                 
                 # Count moods
-                mood_counts[mood] = mood_counts.get(mood, 0) + 1
+                mood_counts[mood_translated] = mood_counts.get(mood_translated, 0) + 1
                 
                 # Add to recent checkins
                 recent_checkins.append({
-                    "date": date,
-                    "mood": mood
+                    "date": date_display,
+                    "mood": mood_translated
                 })
                 
                 # Add to helpful tips if marked as helpful
                 if is_helpful and coping_tip:
                     helpful_tips.append({
-                        "date": date,
-                        "mood": mood,
+                        "date": date_display,
+                        "mood": mood_translated,
                         "tip": coping_tip
                     })
         
-        # Calculate most common mood
-        most_common_mood = max(mood_counts.items(), key=lambda x: x[1])[0] if mood_counts else "No data yet"
+        # Fetch all checkins for streak calculation (more accurate)
+        all_docs = list(checkins_ref.order_by("date", direction="DESCENDING").limit(100).stream())
+        streak = calculate_streak(all_docs)
         
-        # Calculate streak (consecutive days with check-ins)
-        streak = calculate_streak(docs)
+        # Calculate most common mood
+        most_common_mood = max(mood_counts.items(), key=lambda x: x[1])[0] if mood_counts else translate_mood("No data yet.", user_lang)
         
         # Get motivational quote
         quotes = [
@@ -181,8 +196,42 @@ def api_mood_data():
 @api_bp.route('/api/add_mood', methods=['POST'])
 @login_required
 def api_add_mood():
-    # ...implement logic...
-    return jsonify({"ok": True})
+    """Manually add a mood entry"""
+    data = request.get_json() or {}
+    mood_text = data.get("mood")
+    
+    if not mood_text:
+        return jsonify({"ok": False, "error": "No mood provided"}), 400
+        
+    user_id = current_user.id
+    from app import db
+    if not db:
+        return jsonify({"ok": False, "error": "Database not initialized"}), 500
+        
+    try:
+        from google.cloud import firestore
+        from utils.emotion_classifier import parse_final_mood
+        
+        mood_list, mood_label = parse_final_mood(mood_text)
+        dominant = mood_list[0] if mood_list else "neutral"
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        
+        db.collection(f"users/{user_id}/checkins").add({
+            "date": today_str,
+            "mood_dominant": dominant,
+            "mood_label": mood_label,
+            "mood_list": mood_list,
+            "last_text": mood_text,
+            "intent": "manual_entry",
+            "avg_sentiment": 0.0,
+            "sentiments": [0.0],
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "helpful": False
+        })
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"❌ Add mood entry failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # Add other API routes as needed
 

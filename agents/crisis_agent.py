@@ -8,9 +8,22 @@ class CrisisAgent:
         self.model = 'gemini-2.0-flash'
 
     def is_crisis(self, text):
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=CRISIS_PROMPT.format(text=text)
-        )
-        result = response.text.strip().upper()
-        return result.startswith("CRISIS")
+        try:
+            models_to_try = [self.model, "gemini-2.5-flash", "gemini-2.0-flash-lite"]
+            for model in models_to_try:
+                try:
+                    response = self.client.models.generate_content(
+                        model=model,
+                        contents=CRISIS_PROMPT.format(text=text)
+                    )
+                    result = response.text.strip().upper()
+                    return result.startswith("CRISIS")
+                except Exception as e:
+                    if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                        print(f"Crisis detection quota exceeded for {model}, trying fallback...")
+                        continue
+                    raise
+            return False # Default to safe if both fail
+        except Exception as e:
+            print(f"Crisis detection error: {e}")
+            return False

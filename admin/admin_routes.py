@@ -42,7 +42,7 @@ def admin_dashboard():
     total_users = len(users)
     total_checkins = len(checkins)
 
-    today = datetime.datetime.now().date()
+    today = datetime.datetime.now(datetime.timezone.utc).date()
     sentiments = []
     moods = {}
     latest_checkins = []
@@ -53,7 +53,7 @@ def admin_dashboard():
         
         # Handle timestamp/created_at fields
         timestamp = data.get('timestamp') or data.get('created_at')
-        if timestamp and isinstance(timestamp, datetime.datetime):
+        if timestamp and hasattr(timestamp, 'date'):
             dt = timestamp.date()
         else:
             dt = None

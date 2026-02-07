@@ -136,213 +136,47 @@ def load_user(user_id):
     return AnonymousUser()
 
 
-CHAT_HISTORY = {}  # key=user_id, value=list of messages
-
-# --- NLP and Crisis Detection ---
-SYSTEM_PROMPT = """You are Sahaay-AI, a kind, happy, and supportive mental health companion for Indian youth. Your primary role is to be a welcoming and non-judgmental friend. You are here to listen, understand, and share in their feelings, both the good and the bad. Your friendly and empathetic tone should always shine through.
-
-**INSTRUCTION: Your entire response must be a single JSON object. Do not include any text, conversation, or markdown before or after the JSON. Do not include any explanation.**
-
-The JSON object must have one key:
-- **response**: Your brief, empathetic, and conversational reply to the user.
-
-Example:
-User: I had a great day today!
-Your Response:
-{
-  "response": "Oh, that's fantastic! Tell me all about it—what made your day so great?"
-}
-"""
-
-CRISIS_PROMPT = """You are a crisis detection AI. Analyze the following message and respond with either 'CRISIS' if the message indicates a mental health crisis, or 'SAFE' if it does not. Only respond with one word: CRISIS or SAFE.
-
-Message: {text}
-Response:"""
-
+# Crisis exclusion list for minor false positives
 CRISIS_EXCLUSION_LIST = ["bye", "goodbye", "later", "cya", "ok", "okay"]
 
 
-def is_crisis_sentence(text: str) -> bool:
-    if not text or not text.strip():
-        return False
+# Removed redundant functions - use CrisisAgent from agents/crisis_agent.py
+
+
+# --- Helper functions (imported from utils/helpers.py) ---
+# save_checkin, format_timestamp, firestore_to_datetime, calculate_streak are all in utils/helpers.py
+
+
+def gemini_generate_with_fallback(prompt, fallback_value=None):
+    """Universal helper for Gemini API calls with multi-level fallback"""
     try:
-        if text.strip().lower() in CRISIS_EXCLUSION_LIST:
-            return False
-        resp = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=CRISIS_PROMPT.format(text=text)
-        )
-        result = getattr(resp, "text", "").strip().upper()
-        token = getattr(current_user, "push_token", None)
-        if result.startswith("CRISIS") and pb and token:
+        models_to_try = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-flash-lite"]
+        
+        for model in models_to_try:
             try:
-                pb.push_note("Crisis Alert 🚨", f"A user just mentioned: '{text}'")
-            except Exception:
-                pass
-        return result.startswith("CRISIS")
+                resp = client.models.generate_content(
+                    model=model,
+                    contents=prompt
+                )
+                text = getattr(resp, "text", "").strip()
+                if text:
+                    return text
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    print(f"Quota exceeded for {model}, trying fallback...")
+                    continue
+                raise
+        
+        return fallback_value
     except Exception as e:
-        print(f"Crisis detection error: {e}")
-        return False
-
-
-def process_and_store_message(user_id, message_text, doc_ref):
-    """
-    Processes a user message by sending it to Gemini for emotion analysis.
-    """
-    try:
-        prompt = f"""Analyze the following text and identify the primary emotions present. If more than one emotion is present, list them. The emotions should be from the following list: happy, sad, angry, anxious, calm, excited, confused, neutral.
-
-Example 1:
-Text: "I had a great day today, but I'm a little tired."
-Response: happy, tired
-
-Example 2:
-Text: "I'm so frustrated with my work, and now I have a huge deadline."
-Response: angry, anxious
-
-Example 3:
-Text: "The movie was so boring and I just wanted to leave."
-Response: sad
-
-Example 4:
-Text: "{message_text}"
-Response:"""
-
-        # Use client.models.generate_content (no REST)
-        resp = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt
-        )
-        response_text = getattr(resp, "text", "").strip().lower()
-        detected_emotions = [e.strip() for e in re.split(r'[,\n]+', response_text) if e.strip()]
-        if not detected_emotions:
-            final_emotions = ["neutral"]
-        else:
-            final_emotions = detected_emotions
-
-        message_data = {
-            "text": message_text,
-            "timestamp": datetime.now(timezone.utc),
-            "emotions": final_emotions
-        }
-        # store into Firestore doc_ref
-        try:
-            doc_ref.update({"messages": firestore.ArrayUnion([message_data])})
-        except Exception:
-            # fallback: if doc_ref.update fails, try adding a new doc or ignore
-            pass
-        return {"emotions": final_emotions, "message": message_text}
-    except Exception as e:
-        print(f"Emotion analysis API call failed: {e}")
-        return {"emotions": ["unknown"], "message": message_text}
-
-
-# --- Helper functions ---
-def save_checkin(user_id, mood, language, text, intent, sentiment, helpful_tip=None):
-    """
-    Saves a checkin with proper mood structure:
-
-    - mood_list: ["joy", "sadness"]
-    - mood_label: "Joy / Sadness"
-    - mood_dominant: "joy"
-    """
-    if not db:
-        return
-
-    try:
-        # Convert raw mood (like "joy/sadness" or "mixed:joy(...)/sadness(...)") into lists + clean label
-        mood_list, mood_label = parse_final_mood(mood)
-        dominant = mood_list[0] if mood_list else "neutral"
-
-        today = datetime.now(UTC).date()
-        today_str = today.strftime("%Y-%m-%d")
-        checkins_ref = db.collection(f"users/{user_id}/checkins")
-
-        docs = list(checkins_ref.where("date", "==", today_str).stream())
-
-        if docs:
-            doc = docs[0]
-            data = doc.to_dict() or {}
-
-            sentiments = data.get("sentiments", [])
-            sentiments.append(sentiment)
-            avg_sentiment = sum(sentiments) / len(sentiments)
-
-            old_moods = data.get("mood_list", [])
-            new_moods = old_moods + mood_list
-
-            doc.reference.update({
-                "sentiments": sentiments,
-                "avg_sentiment": avg_sentiment,
-                "mood_list": new_moods,
-                "mood_label": mood_label,
-                "mood_dominant": dominant,
-                "language": language,
-                "last_text": text,
-                "intent": intent,
-                "coping_tip": helpful_tip or generate_coping_tip(text),
-                "timestamp": firestore.SERVER_TIMESTAMP
-            })
-
-        else:
-            checkins_ref.add({
-                "date": today_str,
-                "sentiments": [sentiment],
-                "avg_sentiment": sentiment,
-                "mood_list": mood_list,
-                "mood_label": mood_label,
-                "mood_dominant": dominant,
-                "language": language,
-                "last_text": text,
-                "intent": intent,
-                "coping_tip": helpful_tip or generate_coping_tip(text),
-                "helpful": False,
-                "timestamp": firestore.SERVER_TIMESTAMP
-            })
-
-    except Exception as e:
-        print("Firestore save failed:", e)
-
-
-def format_timestamp(ts):
-    if not ts:
-        return 'N/A'
-    try:
-        return ts.strftime("%b %d, %Y")
-    except Exception:
-        return 'N/A'
-
-
-def firestore_to_datetime(ts):
-    if ts and hasattr(ts, 'astimezone'):
-        return ts
-    return None
-
-
-def calculate_streak(timestamps):
-    dates = {firestore_to_datetime(ts).date() for ts in timestamps if firestore_to_datetime(ts)}
-    if not dates:
-        return 0
-    today = datetime.now(UTC).date()
-    streak = 0
-    while today in dates:
-        streak += 1
-        today -= timedelta(days=1)
-    return streak
+        print(f"Gemini generation error: {e}")
+        return fallback_value
 
 
 def generate_coping_tip(mood_text):
+    """Generate coping tip using CopingTipAgent for consistency"""
     prompt = f"Provide a single, specific, and actionable coping tip for someone feeling {mood_text}. Respond with only the tip text, no other information."
-    try:
-        resp = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt
-        )
-        tip_text = getattr(resp, "text", "").strip()
-        return tip_text or "Take a deep breath and a moment for yourself."
-    except Exception as e:
-        print(f"Error generating coping tip: {e}")
-        return "Take a deep breath and a moment for yourself."
+    return gemini_generate_with_fallback(prompt, "Take a deep breath and a moment for yourself.")
 
 
 # --- Routes (kept your original structure) ---
@@ -372,6 +206,7 @@ def daily_checkin_prompt():
     prompts = {
         'en': "Hello! How are you feeling today?",
         'ta': "வணக்கம்! இன்று எப்படி உணர்கிறீர்கள்?",
+        'te': "నమస్కారం! ఈరోజు మీరు ఎలా ఉన్నారు?",
         'es': "¿Hola! ¿Cómo te sientes hoy?",
         'hi': "नमस्ते! आज आप कैसा महसूस कर रहे हैं?"
     }
@@ -461,85 +296,8 @@ def reset_consent():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-@app.route('/api/home_data', methods=['GET'])
-@login_required
-def home_data():
-    if not db:
-        return jsonify({"error": "Database not initialized"}), 500
-    user_id = current_user.id
-    period = request.args.get('period', 'last10')
-    
-    from translations.translation_utils import translate_mood
-    user_lang = session.get('language', 'en')
-    
-    try:
-        all_checkins_docs = db.collection(f"users/{user_id}/checkins").order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
-        all_timestamps = [doc.to_dict().get("timestamp") for doc in all_checkins_docs]
-        streak = calculate_streak([ts for ts in all_timestamps if ts])
+# Removed redundant API routes - these are handled by routes/api_routes.py blueprint
 
-        filtered_query = db.collection(f"users/{user_id}/checkins").order_by("timestamp", direction=firestore.Query.DESCENDING)
-        if period == 'last7days':
-            seven_days_ago = datetime.now(UTC) - timedelta(days=7)
-            filtered_query = filtered_query.where('timestamp', '>=', seven_days_ago)
-        elif period != 'all':
-            filtered_query = filtered_query.limit(10)
-
-        filtered_docs = filtered_query.stream()
-        recent = []
-        helpful = []
-        for doc in filtered_docs:
-            d = doc.to_dict()
-            ts = d.get("timestamp")
-            mood_raw = d.get("mood_label", d.get("mood_dominant", "N/A"))
-            mood_translated = translate_mood(mood_raw, user_lang)
-            recent.append({"date": format_timestamp(ts), "mood": mood_translated})
-            if d.get("helpful"):
-                helpful.append({"date": format_timestamp(ts), "tip": d.get("coping_tip", ""), "mood": mood_translated})
-
-        latest_mood = recent[0]["mood"] if recent else "No data yet."
-        result = {"streak": streak, "recent": recent, "helpful": helpful, "quote": "Keep going, you're stronger than you think! 🌱", "mood": latest_mood}
-        print(f"Home data for user {user_id}: {result}")
-        return jsonify(result)
-    except Exception as e:
-        print(f"Home data fetch failed for user {user_id}:", e)
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": "Failed to fetch home data"}), 500
-
-
-@app.route("/api/mood_data", methods=["GET"])
-@login_required
-def api_mood_data():
-    user_id = current_user.id
-    entries = []
-    try:
-        checkins = db.collection(f"users/{user_id}/checkins").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(10).stream()
-        for doc in checkins:
-            data = doc.to_dict()
-            ts = data.get("timestamp")
-            entries.append({"mood": data.get("mood_label", data.get("mood_dominant", "neutral")), "date": format_timestamp(ts)})
-        return jsonify({"entries": entries})
-    except Exception as e:
-        print("Fetch mood entries failed:", e)
-        return jsonify({"entries": []}), 500
-
-
-@app.route("/api/add_mood", methods=["POST"])
-@login_required
-def api_add_mood():
-    data = request.get_json()
-    mood_text = data.get("mood")
-    if not mood_text:
-        return jsonify({"ok": False, "error": "No mood provided"}), 400
-    user_id = current_user.id
-    try:
-        db.collection(f"users/{user_id}/checkins").add({
-            "mood": mood_text, "text": mood_text, "intent": "manual_entry", "sentiment": 0.0, "timestamp": firestore.SERVER_TIMESTAMP
-        })
-        return jsonify({"ok": True})
-    except Exception as e:
-        print("Add mood entry failed:", e)
-        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/tools_data", methods=["GET"])
@@ -849,14 +607,10 @@ def mood_weekly_summary():
         
         # Use Gemini for summary
         summary = None
-        try:
-            response = client.models.generate_content(
-                model=MODEL_NAME,
-                contents=f"Summarize the following weekly check-in notes in 3-4 sentences, highlighting emotional patterns:\n{all_text}"
-            )
-            summary = getattr(response, "text", "").strip()
-        except Exception as e:
-            print("Gemini weekly summarization failed:", e)
+        # Use Gemini for summary with fallback
+        prompt = f"Summarize the following weekly check-in notes in 3-4 sentences, highlighting emotional patterns:\n{all_text}"
+        summary = gemini_generate_with_fallback(prompt)
+
         
         if not summary:
             # Fallback: simple summary
@@ -891,17 +645,14 @@ def mood_themes():
             if not all_text.strip():
                 return jsonify({"ok": True, "themes_ai": ["No text data available"]})
             
-            try:
-                response = client.models.generate_content(
-                    model=MODEL_NAME,
-                    contents=f"Analyze these mental health check-in notes and identify 5-6 recurring themes or patterns. Return only a simple list of themes:\n{all_text}"
-                )
-                themes_text = getattr(response, "text", "").strip()
+            prompt = f"Analyze these mental health check-in notes and identify 5-6 recurring themes or patterns. Return only a simple list of themes:\n{all_text}"
+            themes_text = gemini_generate_with_fallback(prompt)
+            
+            if themes_text:
                 # Parse the response into a list
                 themes_ai = [line.strip().lstrip('•-*123456789. ') for line in themes_text.split('\n') if line.strip()]
                 return jsonify({"ok": True, "themes_ai": themes_ai[:6]})
-            except Exception as e:
-                print("AI themes generation failed:", e)
+            else:
                 return jsonify({"ok": False, "error": "AI themes unavailable"})
         else:
             # Extract keyword themes from text

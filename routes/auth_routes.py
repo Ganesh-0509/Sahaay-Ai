@@ -19,8 +19,8 @@ def login():
         password = request.form.get('password')
         from app import db
         user = User.get_by_email(email, db)
-        # Add password check logic here
-        if user:
+        
+        if user and user.check_password(password):
             login_user(user)
             
             # Load user's language preference from Firestore

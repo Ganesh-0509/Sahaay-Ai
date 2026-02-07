@@ -3,18 +3,25 @@ from werkzeug.security import generate_password_hash
 import uuid
 
 class User(UserMixin):
-    def __init__(self, id, email, username, push_token=None):
+    def __init__(self, id, email, username, password_hash=None, push_token=None):
         self.id = id
         self.email = email
         self.username = username
+        self.password_hash = password_hash
         self.push_token = push_token
     
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+
     @staticmethod
     def get(user_id, users_ref):
         doc = users_ref.document(user_id).get()
         if doc.exists:
             data = doc.to_dict()
-            return User(doc.id, data['email'], data['name'], data.get('push_token'))
+            return User(doc.id, data['email'], data['name'], data.get('password_hash'), data.get('push_token'))
         return None
 
     @staticmethod
@@ -23,7 +30,7 @@ class User(UserMixin):
         docs = db.collection('users').where('email', '==', email).limit(1).stream()
         for doc in docs:
             data = doc.to_dict()
-            return User(doc.id, data.get('email'), data.get('name'), data.get('push_token'))
+            return User(doc.id, data.get('email'), data.get('name'), data.get('password_hash'), data.get('push_token'))
         return None
 
     @staticmethod
