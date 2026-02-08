@@ -12,6 +12,13 @@ api_bp = Blueprint('api', __name__)
 def home_data():
     """Fetch home dashboard data for the current user"""
     user_id = current_user.id
+    
+    # DEBUG: Print user info
+    print(f"🔍 DEBUG /api/home_data:")
+    print(f"   User ID: {user_id}")
+    print(f"   Is Authenticated: {current_user.is_authenticated}")
+    print(f"   User Object: {current_user}")
+    
     period = request.args.get('period', 'last10')
     
     from app import db

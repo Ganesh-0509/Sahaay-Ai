@@ -85,12 +85,22 @@ except Exception as e:
 
 # Flask setup
 app = Flask(__name__, static_folder="static", template_folder="templates")
-CORS(app)
+
+# CORS configuration for Next.js frontend
+CORS(app, supports_credentials=True, origins=[
+    "http://localhost:3000",  # Next.js development
+    "http://127.0.0.1:3000",  # Alternative localhost
+    # Add production frontend URL here when deploying
+])
 app.secret_key = SECRET_KEY
-app.config['SESSION_COOKIE_SECURE'] = True
+
+# Session configuration for Next.js cross-origin requests
+app.config['SESSION_COOKIE_SECURE'] = False  # Set True only with HTTPS in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['REMEMBER_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Allow same-site requests across ports
+app.config['REMEMBER_COOKIE_SECURE'] = False  # Set True only with HTTPS
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
+app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'
 app.config['GEMINI_API_KEY'] = GEMINI_API_KEY
 app.config['GEMINI_MODEL'] = MODEL_NAME
 
@@ -129,11 +139,29 @@ login_manager.login_message = None
 
 @login_manager.user_loader
 def load_user(user_id):
-    if users_ref:
+    print(f"🔍 DEBUG load_user called with user_id: {user_id}")
+    
+    if not users_ref:
+        print("   ❌ users_ref is None - Firestore not initialized!")
+        return None
+    
+    if not db:
+        print("   ❌ db is None - Firestore not initialized!")
+        return None
+    
+    try:
         user = User.get(user_id, users_ref)
         if user:
+            print(f"   ✅ User loaded: {user.username} ({user.id})")
             return user
-    return AnonymousUser()
+        else:
+            print(f"   ❌ No user found for ID: {user_id}")
+            return None
+    except Exception as e:
+        print(f"   ❌ Error loading user: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 # Crisis exclusion list for minor false positives
@@ -185,18 +213,98 @@ def generate_coping_tip(mood_text):
 def fetch_conversation():
     user_id = current_user.id
     date_str = request.args.get('date')
-    if not date_str:
-        return jsonify({"ok": False, "error": "Date parameter is missing"}), 400
+    
+    print(f"🔍 DEBUG /api/fetch_conversation: user_id={user_id}, date={date_str}")
+    
     try:
-        doc_ref = db.collection(f"users/{user_id}/conversations").document(date_str)
-        doc = doc_ref.get()
-        if doc.exists:
+        # Chat messages are saved in 'checkins' collection, not 'conversations'
+        # If no date specified, return all recent check-ins (last 7 days)
+        if not date_str:
+            from datetime import datetime, timedelta, timezone
+            seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+            
+            print(f"   📅 Fetching checkins >= {seven_days_ago}")
+            print(f"   📂 Collection path: users/{user_id}/checkins")
+            
+            # Get all checkins from last 7 days
+            checkins_ref = db.collection(f"users/{user_id}/checkins")
+            
+            # First, let's get ALL checkins to see what exists
+            all_docs = list(checkins_ref.stream())
+            print(f"   📊 Total checkins found (all time): {len(all_docs)}")
+            
+            if all_docs:
+                print(f"   📋 Sample checkin IDs: {[doc.id for doc in all_docs[:5]]}")
+                for doc in all_docs[:3]:
+                    data = doc.to_dict()
+                    # NOTE: save_checkin saves as 'last_text', not 'text'!
+                    has_text = bool(data.get('last_text'))
+                    print(f"      - Doc {doc.id}: date={data.get('date')}, has last_text={has_text}")
+            
+            # Now filter by date
+            docs = list(checkins_ref.where("date", ">=", seven_days_ago).order_by("date").stream())
+            print(f"   📊 Checkins in last 7 days: {len(docs)}")
+            
+            all_messages = []
+            for doc in docs:
+                data = doc.to_dict()
+                # Each checkin has the user's text and AI response
+                # IMPORTANT: Field is 'last_text', not 'text'!
+                user_text = data.get("last_text", "")
+                mood = data.get("mood_label", data.get("mood_dominant", ""))
+                date = data.get("date", "")
+                
+                print(f"      Processing doc {doc.id}: text_length={len(user_text)}, mood={mood}, date={date}")
+                
+                if user_text:
+                    # Add user message
+                    all_messages.append({
+                        "text": user_text,
+                        "sender": "user",
+                        "timestamp": date,
+                    })
+                    
+                    # Add AI response (constructed from mood/tip)
+                    ai_response = f"I understand you're feeling {mood}."
+                    coping_tip = data.get("coping_tip", "")
+                    if coping_tip:
+                        ai_response += f" {coping_tip}"
+                    
+                    all_messages.append({
+                        "text": ai_response,
+                        "sender": "ai",
+                        "mood": mood,
+                        "timestamp": date,
+                    })
+            
+            print(f"   ✅ Converted to {len(all_messages)} messages")
+            return jsonify({"ok": True, "messages": all_messages})
+        
+        # If date specified, return that specific day's checkins
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        docs = list(checkins_ref.where("date", "==", date_str).stream())
+        
+        messages = []
+        for doc in docs:
             data = doc.to_dict()
-            return jsonify({"ok": True, "messages": data.get("messages", [])})
-        else:
-            return jsonify({"ok": True, "messages": []})
+            user_text = data.get("last_text", "")
+            mood = data.get("mood_label", data.get("mood_dominant", ""))
+            
+            if user_text:
+                messages.append({"text": user_text, "sender": "user"})
+                messages.append({
+                    "text": f"I understand you're feeling {mood}.",
+                    "sender": "ai",
+                    "mood": mood
+                })
+        
+        print(f"   Found {len(messages)} messages for date {date_str}")
+        return jsonify({"ok": True, "messages": messages})
+            
     except Exception as e:
-        print(f"Error fetching conversation: {e}")
+        print(f"❌ Error fetching conversation: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": "Failed to fetch conversation history"}), 500
 
 
@@ -265,20 +373,28 @@ def consent_status():
 
 @app.route('/api/get_user_info', methods=['GET'])
 def get_user_info():
+    print(f"🔍 DEBUG /api/get_user_info:")
+    print(f"   Is Authenticated: {current_user.is_authenticated}")
+    print(f"   Current User: {current_user}")
+    
     if current_user.is_authenticated:
         if isinstance(current_user, User):
-            return jsonify({
+            user_info = {
                 "user_id": current_user.id,
                 "username": current_user.username,
                 "is_anonymous": False
-            })
+            }
+            print(f"   Returning user: {user_info}")
+            return jsonify(user_info)
         else:
             return jsonify({
                 "user_id": session.get('anonymous_id', 'anon'),
                 "username": "Anonymous",
                 "is_anonymous": True
             })
-    return jsonify({"user_id": "guest", "username": "Guest", "is_anonymous": False})
+    
+    print("   ❌ Not authenticated - returning 401")
+    return jsonify({"error": "Not authenticated"}), 401
 
 
 @app.route('/api/reset_consent', methods=['POST'])

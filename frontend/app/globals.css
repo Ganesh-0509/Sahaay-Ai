@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 74 144 164;
+    --color-primary-light: 107 164 184;
+    --color-primary-dark: 53 124 143;
+    --color-secondary: 124 152 133;
+    --color-background: 250 250 249;
+    --color-surface: 255 255 255;
+    --color-border: 229 229 229;
+    --color-text-primary: 31 41 55;
+    --color-text-secondary: 107 114 128;
+    --color-text-muted: 156 163 175;
+  }
+
+  body {
+    background-color: rgb(var(--color-background));
+    color: rgb(var(--color-text-primary));
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+
+  /* Button styles */
+  .btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    outline: none;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 0 4px rgb(var(--color-primary));
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: rgb(var(--color-primary));
+    color: white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: rgb(var(--color-primary-dark));
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background-color: rgb(var(--color-secondary));
+    color: white;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: rgb(98 130 112);
+  }
+
+  .btn-outline {
+    border: 1px solid rgb(var(--color-border));
+    color: rgb(var(--color-text-primary));
+    background-color: transparent;
+  }
+
+  .btn-outline:hover:not(:disabled) {
+    background-color: rgb(249 250 251);
+  }
+
+  /* Card styles */
+  .card {
+    background-color: rgb(var(--color-surface));
+    border: 1px solid rgb(var(--color-border));
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  /* Input styles */
+  .input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgb(var(--color-border));
+    border-radius: 0.5rem;
+    outline: none;
+    transition: all 0.2s;
+    background-color: white;
+  }
+
+  .input:focus {
+    border-color: rgb(var(--color-primary));
+    box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.1);
+  }
+
+  .input:disabled {
+    background-color: rgb(249 250 251);
+    cursor: not-allowed;
+  }
+
+  /* Chat bubble */
+  .chat-bubble {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    max-width: 80%;
+    word-break: break-word;
+  }
+
+  .chat-bubble-user {
+    background-color: rgb(var(--color-primary-light) / 0.1);
+    border: 1px solid rgb(var(--color-primary-light) / 0.2);
+    margin-left: auto;
+  }
+
+  .chat-bubble-ai {
+    background-color: rgb(249 250 251);
+    border: 1px solid rgb(243 244 246);
+  }
+}
