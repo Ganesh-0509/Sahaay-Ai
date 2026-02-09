@@ -2,132 +2,274 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --color-primary: 74 144 164;
-    --color-primary-light: 107 164 184;
-    --color-primary-dark: 53 124 143;
-    --color-secondary: 124 152 133;
-    --color-background: 250 250 249;
-    --color-surface: 255 255 255;
-    --color-border: 229 229 229;
-    --color-text-primary: 31 41 55;
-    --color-text-secondary: 107 114 128;
-    --color-text-muted: 156 163 175;
+:root {
+  --background: #0A1929;
+  --foreground: #E8F4F8;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  background: linear-gradient(-45deg, #0A1929, #132F4C, #1E4976, #0A1929);
+  background-size: 400% 400%;
+  animation: animatedGradient 20s ease infinite;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #E8F4F8;
+  min-height: 100vh;
+}
+
+/* Calming gradient background */
+.gradient-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(-45deg, #0A1929, #132F4C, #1E4976, #0A1929);
+  background-size: 400% 400%;
+  animation: animatedGradient 20s ease infinite;
+  z-index: -1;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+  background: rgba(19, 47, 76, 0.85);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-radius: 2rem;
+  border: 1px solid rgba(91, 163, 163, 0.25);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  padding: 1.5rem;
+  transform: translateY(0);
+  transition: all 0.3s ease-in-out;
+  position: relative;
+}
+
+.glass-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(91, 163, 163, 0.5);
+  box-shadow: 0 15px 40px rgba(91, 163, 163, 0.3);
+}
+
+/* Buttons */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  transition: all 0.3s ease-in-out;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, #5BA3A3, #7CC4C4);
+  color: #FFFFFF;
+  box-shadow: 0 0 25px rgba(91, 163, 163, 0.4);
+}
+
+.btn-primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 35px rgba(91, 163, 163, 0.6);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: scale(1);
+}
+
+.btn-secondary {
+  background: linear-gradient(90deg, #FF9B85, #FFB8A3);
+  color: #FFFFFF;
+  box-shadow: 0 0 25px rgba(255, 155, 133, 0.3);
+}
+
+.btn-secondary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 35px rgba(255, 155, 133, 0.5);
+}
+
+.btn-outline {
+  background: transparent;
+  color: #5BA3A3;
+  border: 2px solid #5BA3A3;
+}
+
+.btn-outline:hover {
+  background: rgba(91, 163, 163, 0.1);
+  transform: scale(1.05);
+}
+
+/* Input Fields */
+.input {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  border-radius: 1rem;
+  border: 2px solid rgba(91, 163, 163, 0.3);
+  background: rgba(19, 47, 76, 0.5);
+  color: #E8F4F8;
+  font-size: 1rem;
+  transition: all 0.3s ease-in-out;
+}
+
+.input::placeholder {
+  color: #7A96B0;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #5BA3A3;
+  box-shadow: 0 0 0 3px rgba(91, 163, 163, 0.2);
+  background: rgba(19, 47, 76, 0.7);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sidebar Links */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #E8F4F8;
+  text-decoration: none;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  transform: scale(1);
+  transition: all 0.3s ease-in-out;
+}
+
+.sidebar-link:hover {
+  color: #FFD89B;
+  background: rgba(91, 163, 163, 0.25);
+  transform: translateX(5px) scale(1.03);
+}
+
+.sidebar-active {
+  color: #FFFFFF !important;
+  background: linear-gradient(90deg, #5BA3A3, #7CC4C4) !important;
+  animation: pulseGlow 2.5s infinite ease-in-out;
+  box-shadow: 0 0 30px rgba(91, 163, 163, 0.5);
+}
+
+/* Chat Bubbles */
+.chat-bubble {
+  padding: 1rem 1.25rem;
+  border-radius: 1.5rem;
+  max-width: 70%;
+  word-wrap: break-word;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.chat-bubble-user {
+  background: linear-gradient(135deg, #5BA3A3, #7CC4C4);
+  color: #FFFFFF;
+  margin-left: auto;
+  border-bottom-right-radius: 0.5rem;
+}
+
+.chat-bubble-ai {
+  background: rgba(19, 47, 76, 0.8);
+  backdrop-filter: blur(10px);
+  color: #E8F4F8;
+  border: 1px solid rgba(91, 163, 163, 0.3);
+  border-bottom-left-radius: 0.5rem;
+}
+
+/* Animations */
+@keyframes animatedGradient {
+  0% {
+    background-position: 0% 50%;
   }
 
-  body {
-    background-color: rgb(var(--color-background));
-    color: rgb(var(--color-text-primary));
-    font-family: Inter, system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
   }
 }
 
-@layer components {
-
-  /* Button styles */
-  .btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    outline: none;
-    cursor: pointer;
-    border: none;
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
   }
 
-  .btn:focus {
-    outline: 2px solid transparent;
-    outline-offset: 2px;
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8), 0 0 0 4px rgb(var(--color-primary));
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px 0 rgba(91, 163, 163, 0.3);
   }
 
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  50% {
+    box-shadow: 0 0 35px 5px rgba(91, 163, 163, 0.6);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(19, 47, 76, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(91, 163, 163, 0.5);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(91, 163, 163, 0.8);
+}
+
+/* Loading State */
+.loading-shimmer {
+  background: linear-gradient(90deg,
+      rgba(19, 47, 76, 0.2) 0%,
+      rgba(91, 163, 163, 0.2) 50%,
+      rgba(19, 47, 76, 0.2) 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
   }
 
-  .btn-primary {
-    background-color: rgb(var(--color-primary));
-    color: white;
+  100% {
+    background-position: 1000px 0;
   }
+}
 
-  .btn-primary:hover:not(:disabled) {
-    background-color: rgb(var(--color-primary-dark));
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-secondary {
-    background-color: rgb(var(--color-secondary));
-    color: white;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background-color: rgb(98 130 112);
-  }
-
-  .btn-outline {
-    border: 1px solid rgb(var(--color-border));
-    color: rgb(var(--color-text-primary));
-    background-color: transparent;
-  }
-
-  .btn-outline:hover:not(:disabled) {
-    background-color: rgb(249 250 251);
-  }
-
-  /* Card styles */
-  .card {
-    background-color: rgb(var(--color-surface));
-    border: 1px solid rgb(var(--color-border));
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  }
-
-  /* Input styles */
-  .input {
-    width: 100%;
-    padding: 0.5rem 1rem;
-    border: 1px solid rgb(var(--color-border));
-    border-radius: 0.5rem;
-    outline: none;
-    transition: all 0.2s;
-    background-color: white;
-  }
-
-  .input:focus {
-    border-color: rgb(var(--color-primary));
-    box-shadow: 0 0 0 3px rgb(var(--color-primary) / 0.1);
-  }
-
-  .input:disabled {
-    background-color: rgb(249 250 251);
-    cursor: not-allowed;
-  }
-
-  /* Chat bubble */
-  .chat-bubble {
+/* Responsive */
+@media (max-width: 768px) {
+  .glass-card {
     padding: 1rem;
-    border-radius: 0.5rem;
-    max-width: 80%;
-    word-break: break-word;
+    border-radius: 1.5rem;
   }
 
-  .chat-bubble-user {
-    background-color: rgb(var(--color-primary-light) / 0.1);
-    border: 1px solid rgb(var(--color-primary-light) / 0.2);
-    margin-left: auto;
-  }
-
-  .chat-bubble-ai {
-    background-color: rgb(249 250 251);
-    border: 1px solid rgb(243 244 246);
+  .chat-bubble {
+    max-width: 85%;
   }
 }

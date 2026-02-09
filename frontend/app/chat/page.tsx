@@ -1,13 +1,10 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { chatAPI } from '@/lib/api';
-import { ChatBubble } from '@/components/chat/ChatBubble';
-import { ChatInput } from '@/components/chat/ChatInput';
-import { Button } from '@/components/ui/Button';
-import Link from 'next/link';
+import Layout from '@/components/layout/Layout';
 
 interface Message {
     text: string;
@@ -17,6 +14,7 @@ interface Message {
 }
 
 export default function ChatPage() {
+    const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -24,7 +22,6 @@ export default function ChatPage() {
     const user = useAuthStore((state) => state.user);
     const authLoading = useAuthStore((state) => state.isLoading);
     const checkAuth = useAuthStore((state) => state.checkAuth);
-    const logout = useAuthStore((state) => state.logout);
     const router = useRouter();
 
     useEffect(() => {
@@ -54,52 +51,48 @@ export default function ChatPage() {
             const response = await chatAPI.getConversation();
             console.log('Conversation response:', response.data);
 
-            if (response.data && response.data.ok && response.data.messages) {
+            if (response.data.ok && response.data.messages) {
                 const formattedMessages: Message[] = response.data.messages.map((msg: any) => ({
-                    text: msg.text || msg.message || '',
-                    sender: msg.sender || 'ai',
+                    text: msg.text,
+                    sender: msg.sender,
                     mood: msg.mood,
+                    timestamp: msg.timestamp
                 }));
-                setMessages(formattedMessages);
+
                 console.log(`Loaded ${formattedMessages.length} messages`);
+                setMessages(formattedMessages);
             } else {
                 console.log('No messages in conversation history');
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Failed to load conversation:', error);
-            console.error('Error response:', error.response?.data);
-            // Don't show error to user - empty conversation is fine for first time
         }
     };
 
-    const handleSendMessage = async (messageText: string) => {
-        // Add user message immediately
-        const userMessage: Message = {
-            text: messageText,
-            sender: 'user',
-        };
+    const handleSend = async () => {
+        if (!input.trim() || isLoading) return;
+
+        const userMessage: Message = { text: input, sender: 'user' };
         setMessages((prev) => [...prev, userMessage]);
+        setInput('');
         setIsLoading(true);
 
         try {
-            const response = await chatAPI.sendMessage(messageText);
-            // Flask returns: {ok: true, data: {response, mood, crisis_detected, ...}}
-            const aiMessage: Message = {
-                text: response.data.data?.response || 'I am here to support you.',
-                sender: 'ai',
-                mood: response.data.data?.mood,
-            };
-            setMessages((prev) => [...prev, aiMessage]);
+            const response = await chatAPI.sendMessage(input);
 
-            // Handle crisis detection
-            if (response.data.data?.crisis_detected) {
-                alert('Crisis detected. Please reach out to a mental health professional or emergency services.');
+            if (response.data.response) {
+                const aiMessage: Message = {
+                    text: response.data.response,
+                    sender: 'ai',
+                    mood: response.data.mood
+                };
+                setMessages((prev) => [...prev, aiMessage]);
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Failed to send message:', error);
             const errorMessage: Message = {
-                text: 'Sorry, I am having trouble responding right now. Please try again.',
-                sender: 'ai',
+                text: 'Sorry, I encountered an error. Please try again.',
+                sender: 'ai'
             };
             setMessages((prev) => [...prev, errorMessage]);
         } finally {
@@ -107,57 +100,99 @@ export default function ChatPage() {
         }
     };
 
-    const handleLogout = async () => {
-        await logout();
-        router.push('/login');
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
     };
 
-    if (!user) {
+    if (authLoading || !user) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <p className="text-text-secondary">Loading...</p>
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="loading-shimmer h-8 w-48 rounded-lg"></div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-screen bg-background">
-            {/* Header */}
-            <header className="bg-surface border-b border-border px-4 py-4 flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <Link href="/dashboard">
-                        <Button variant="outline">← Dashboard</Button>
-                    </Link>
-                    <h1 className="text-xl font-semibold text-text-primary">Chat with Sahaay AI</h1>
+        <Layout>
+            <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto">
+                {/* Header */}
+                <div className="mb-6 animate-fade-in-up">
+                    <h1 className="text-4xl font-bold text-theme-text-main mb-2">
+                        AI Support Chat 💬
+                    </h1>
+                    <p className="text-theme-text-subtle">
+                        Talk to our AI companion about how you're feeling
+                    </p>
                 </div>
-                <Button variant="outline" onClick={handleLogout}>
-                    Logout
-                </Button>
-            </header>
 
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-6">
-                <div className="max-w-3xl mx-auto">
+                {/* Messages Container */}
+                <div className="flex-1 glass-card overflow-y-auto mb-4 p-6 space-y-4">
                     {messages.length === 0 ? (
-                        <div className="text-center text-text-secondary py-12">
-                            <p className="mb-4">👋 Hi, I'm Sahaay AI</p>
-                            <p>How are you feeling today?</p>
+                        <div className="flex flex-col items-center justify-center h-full text-center">
+                            <div className="text-6xl mb-4 animate-float">🤗</div>
+                            <h3 className="text-2xl font-semibold text-theme-text-main mb-2">
+                                Start a conversation
+                            </h3>
+                            <p className="text-theme-text-subtle max-w-md">
+                                I'm here to listen and support you. Share how you're feeling, and I'll do my best to help.
+                            </p>
                         </div>
                     ) : (
-                        messages.map((message, index) => (
-                            <ChatBubble key={index} message={message} />
+                        messages.map((msg, idx) => (
+                            <div
+                                key={idx}
+                                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div className={`chat-bubble ${msg.sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`}>
+                                    {msg.text}
+                                    {msg.mood && (
+                                        <div className="mt-2 text-xs opacity-75">
+                                            Detected mood: {msg.mood}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         ))
+                    )}
+                    {isLoading && (
+                        <div className="flex justify-start">
+                            <div className="chat-bubble-ai p-4">
+                                <div className="flex gap-2">
+                                    <div className="w-2 h-2 bg-theme-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                    <div className="w-2 h-2 bg-theme-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                    <div className="w-2 h-2 bg-theme-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                </div>
+                            </div>
+                        </div>
                     )}
                     <div ref={messagesEndRef} />
                 </div>
-            </div>
 
-            {/* Chat Input */}
-            <div className="bg-surface border-t border-border px-4 py-4">
-                <div className="max-w-3xl mx-auto">
-                    <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+                {/* Input Container */}
+                <div className="glass-card p-4">
+                    <div className="flex gap-3">
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            placeholder="Type your message here..."
+                            className="input flex-1"
+                            disabled={isLoading}
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={!input.trim() || isLoading}
+                            className="btn btn-primary px-8"
+                        >
+                            {isLoading ? '...' : 'Send'}
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </Layout>
     );
 }

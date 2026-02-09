@@ -188,7 +188,8 @@ def api_mood_data():
                     "sentiment": data.get("avg_sentiment", 0),
                     "message": data.get("last_text", ""),
                     "coping_tip": data.get("coping_tip", ""),
-                    "helpful": data.get("helpful", False)
+                    "helpful": data.get("helpful", False),
+                    "summary": data.get("last_text", "")[:100]  # Add summary field
                 })
         
         print(f"✓ Fetched {len(entries)} mood entries for user {user_id}")
@@ -240,7 +241,147 @@ def api_add_mood():
         print(f"❌ Add mood entry failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
-# Add other API routes as needed
+# ================= AI-Recommended Coping Tools =================
+
+@api_bp.route('/api/recommended_tools', methods=['GET'])
+@login_required
+def api_recommended_tools():
+    """Get AI-recommended coping tools based on user's recent mood and needs"""
+    user_id = current_user.id
+    
+    from app import db, client
+    if not db or not client:
+        # Fallback to generic tools
+        return jsonify({
+            "ok": False,
+            "tools": [],
+            "message": "Unable to generate personalized recommendations"
+        })
+    
+    try:
+        # Get recent check-ins to understand user's mood
+        checkins_ref = db.collection(f"users/{user_id}/checkins")
+        recent_docs = list(checkins_ref.order_by("date", direction="DESCENDING").limit(7).stream())
+        
+        if not recent_docs:
+            # No data, return default tools
+            return jsonify({
+                "ok": True,
+                "tools": _get_default_tools(),
+                "message": "General wellness tools"
+            })
+        
+        # Analyze recent moods
+        moods = []
+        sentiments = []
+        messages = []
+        
+        for doc in recent_docs:
+            data = doc.to_dict()
+            if data:
+                moods.append(data.get("mood_dominant", "neutral"))
+                sentiments.append(data.get("avg_sentiment", 0))
+                last_text = data.get("last_text", "")
+                if last_text:
+                    messages.append(last_text)
+        
+        # Count mood frequency
+        mood_counts = Counter(moods)
+        dominant_mood = mood_counts.most_common(1)[0][0] if mood_counts else "neutral"
+        avg_sentiment = sum(sentiments) / len(sentiments) if sentiments else 0
+        
+        # Create AI prompt for personalized recommendations
+        prompt = f"""Based on a user's recent mental health check-ins, recommend 3-4 specific coping tools.
+
+Recent mood patterns:
+- Dominant mood: {dominant_mood}
+- Average sentiment: {avg_sentiment:.2f} (range: -1 to 1)
+- Mood distribution: {dict(mood_counts)}
+
+Recent messages: {" | ".join(messages[:3])}
+
+Recommend specific coping tools from this list, and explain WHY each tool would help:
+1. Breathing Exercise (4-4-4 pattern)
+2. Quick Meditation (5-minute)
+3. 5-4-3-2-1 Grounding
+4. Gratitude Journal
+5. Calming Sounds/Music
+6. Positive Affirmations
+7. Physical Exercise/Movement
+8. Journaling/Reflection
+
+Return ONLY valid JSON in this format (no markdown, no code blocks):
+{{
+  "recommended": [
+    {{
+      "id": "breathing",
+      "title": "Breathing Exercise",
+      "reason": "Specific reason why this helps based on mood pattern",
+      "priority": 1
+    }}
+  ]
+}}"""
+
+        # Call Gemini API
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=prompt
+        )
+        
+        # Parse response
+        response_text = response.text.strip()
+        # Remove markdown code blocks if present
+        response_text = re.sub(r'```json\s*', '', response_text)
+        response_text = re.sub(r'```\s*$', '', response_text)
+        
+        import json
+        recommendations = json.loads(response_text)
+        
+        return jsonify({
+            "ok": True,
+            "tools": recommendations.get("recommended", []),
+            "dominant_mood": dominant_mood,
+            "message": f"Personalized for your recent {dominant_mood} mood"
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting recommended tools: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "ok": True,
+            "tools": _get_default_tools(),
+            "message": "General wellness tools"
+        })
+
+def _get_default_tools():
+    """Default coping tools when AI recommendations fail"""
+    return [
+        {
+            "id": "breathing",
+            "title": "Breathing Exercise",
+            "reason": "Helps calm the nervous system and reduce stress",
+            "priority": 1
+        },
+        {
+            "id": "meditation",
+            "title": "Quick Meditation",
+            "reason": "Promotes mindfulness and emotional balance",
+            "priority": 2
+        },
+        {
+            "id": "grounding",
+            "title": "5-4-3-2-1 Grounding",
+            "reason": "Anchors you in the present moment during overwhelm",
+            "priority": 3
+        },
+        {
+            "id": "affirmations",
+            "title": "Positive Affirmations",
+            "reason": "Builds self-confidence and positive mindset",
+            "priority": 4
+        }
+    ]
 
 # ================= Daily Journal & Weekly Reflection =================
 
