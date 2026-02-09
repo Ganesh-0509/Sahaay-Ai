@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { chatAPI } from '@/lib/api';
-import Layout from '@/components/layout/Layout';
+
 
 interface Message {
     text: string;
@@ -116,7 +116,7 @@ export default function ChatPage() {
     }
 
     return (
-        <Layout>
+        <>
             <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="mb-6 animate-fade-in-up">
@@ -193,6 +193,6 @@ export default function ChatPage() {
                     </div>
                 </div>
             </div>
-        </Layout>
+        </>
     );
 }

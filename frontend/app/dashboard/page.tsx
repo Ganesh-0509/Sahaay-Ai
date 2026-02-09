@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { dashboardAPI } from '@/lib/api';
-import Layout from '@/components/layout/Layout';
+
 import Link from 'next/link';
 
 interface MoodEntry {
@@ -58,7 +58,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <Layout>
+        <>
             {/* Header */}
             <div className="mb-8 animate-fade-in-up">
                 <h1 className="text-4xl font-bold text-theme-text-main mb-2">
@@ -136,9 +136,9 @@ export default function DashboardPage() {
             {/* Quick Actions - Unique Card Shapes */}
             <div className="glass-card mb-8 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
                 <h2 className="text-2xl font-bold text-theme-text-main mb-6">Quick Actions</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <Link href="/chat">
-                        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-theme-primary to-theme-primary-dark p-6 hover:scale-105 transition-transform cursor-pointer border-2 border-theme-primary/50 hover:border-theme-primary">
+                        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-theme-primary to-theme-primary-dark p-6 hover:scale-105 transition-transform cursor-pointer border-2 border-theme-primary/50 hover:border-theme-primary h-full">
                             <div className="text-4xl mb-3">💬</div>
                             <h3 className="text-lg font-bold text-white mb-1">Chat with AI</h3>
                             <p className="text-sm text-white/80">Get instant support</p>
@@ -214,6 +214,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
             )}
-        </Layout>
+        </>
     );
 }

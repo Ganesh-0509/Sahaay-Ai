@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import Layout from '@/components/layout/Layout';
+
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState('account');
@@ -53,7 +53,7 @@ export default function SettingsPage() {
     ];
 
     return (
-        <Layout>
+        <>
             {/* Header */}
             <div className="mb-8 animate-fade-in-up">
                 <h1 className="text-4xl font-bold text-theme-text-main mb-2">
@@ -71,8 +71,8 @@ export default function SettingsPage() {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`px-6 py-3 rounded-xl font-semibold transition-all whitespace-nowrap ${activeTab === tab.id
-                                ? 'bg-gradient-to-r from-theme-primary to-theme-primary-light text-white shadow-primary-glow'
-                                : 'bg-theme-hover/30 text-theme-text-subtle hover:bg-theme-hover/50'
+                            ? 'bg-gradient-to-r from-theme-primary to-theme-primary-light text-white shadow-primary-glow'
+                            : 'bg-theme-hover/30 text-theme-text-subtle hover:bg-theme-hover/50'
                             }`}
                     >
                         <span className="mr-2">{tab.icon}</span>
@@ -166,8 +166,8 @@ export default function SettingsPage() {
                                             key={t}
                                             onClick={() => setTheme(t)}
                                             className={`p-4 rounded-xl border-2 transition-all capitalize ${theme === t
-                                                    ? 'border-theme-primary bg-theme-primary/20'
-                                                    : 'border-theme-hover/30 bg-theme-hover/10 hover:border-theme-hover/50'
+                                                ? 'border-theme-primary bg-theme-primary/20'
+                                                : 'border-theme-hover/30 bg-theme-hover/10 hover:border-theme-hover/50'
                                                 }`}
                                         >
                                             {t === 'light' && '☀️'} {t === 'dark' && '🌙'} {t === 'auto' && '🔄'}
@@ -290,6 +290,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
             )}
-        </Layout>
+        </>
     );
 }

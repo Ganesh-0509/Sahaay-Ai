@@ -38,11 +38,11 @@ export default function Sidebar() {
 
     return (
         <>
-            {/* Mobile Menu Button - STRICTLY hidden on desktop (md:hidden) */}
+            {/* Mobile Menu Button - STRICTLY hidden on desktop (sm:hidden) */}
             <button
                 id="menuBtn"
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
-                className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-theme-panel backdrop-blur-lg text-theme-text-main hover:scale-110 active:scale-95 transition-transform shadow-lg"
+                className="sm:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-theme-panel backdrop-blur-lg text-theme-text-main hover:scale-110 active:scale-95 transition-transform shadow-lg"
                 aria-label="Toggle menu"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -54,12 +54,12 @@ export default function Sidebar() {
             {/* Logic: 
                 - Mobile Default: -translate-x-full (Hidden)
                 - Mobile Open: translate-x-0 (Visible)
-                - Desktop (md): translate-x-0 (Always Visible) 
+                - Desktop (sm): translate-x-0 (Always Visible) 
             */}
             <aside
                 id="sidebar"
                 className={`fixed inset-y-0 left-0 w-64 bg-theme-panel backdrop-blur-xl border-r border-theme-primary/20 shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-in-out z-40 
-                ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+                ${isMobileOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'}`}
             >
                 {/* Logo & Title */}
                 <div className="flex items-center mb-8">

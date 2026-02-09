@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import Layout from '@/components/layout/Layout';
+
 
 interface MoodEntry {
     date: string;
@@ -119,7 +119,7 @@ export default function MoodJournalPage() {
     };
 
     return (
-        <Layout>
+        <>
             {/* Header */}
             <div className="mb-8 animate-fade-in-up">
                 <h1 className="text-4xl font-bold text-theme-text-main mb-2">
@@ -260,6 +260,6 @@ export default function MoodJournalPage() {
                     </div>
                 </div>
             </div>
-        </Layout>
+        </>
     );
 }

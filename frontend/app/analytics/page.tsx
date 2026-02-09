@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import Layout from '@/components/layout/Layout';
+
 
 export default function AnalyticsPage() {
     const [stats, setStats] = useState({
@@ -78,7 +78,7 @@ export default function AnalyticsPage() {
     const totalMoods = Object.values(stats.moodDistribution).reduce((a, b) => a + b, 0);
 
     return (
-        <Layout>
+        <>
             {/* Header */}
             <div className="mb-8 animate-fade-in-up">
                 <h1 className="text-4xl font-bold text-theme-text-main mb-2">
@@ -212,6 +212,6 @@ export default function AnalyticsPage() {
                     </p>
                 </div>
             </div>
-        </Layout>
+        </>
     );
 }
