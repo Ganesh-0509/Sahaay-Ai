@@ -9,28 +9,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Calming Mental Health Theme - Ocean & Sunset
-        'theme-bg': '#0A1929',          // Deep Navy (peaceful night)
-        'theme-bg-alt': '#132F4C',      // Lighter Navy
-        'theme-panel': 'rgba(19, 47, 76, 0.85)', // Glass Panel
-        'theme-hover': '#1E4976',       // Hover state
+        'theme-bg': '#1A103C',
+        'theme-panel': 'rgba(45, 33, 89, 0.85)',
+        'theme-hover': '#3E2D7A',
 
-        'theme-primary': '#5BA3A3',     // Soft Teal (calm, trust)
-        'theme-primary-light': '#7CC4C4', // Light Teal
-        'theme-primary-dark': '#3D7A7A',  // Dark Teal
+        'theme-primary': '#8A6CFF',
+        'theme-primary-light': '#A187FF',
+        'theme-primary-dark': '#6A4FE0',
 
-        'theme-secondary': '#FF9B85',   // Warm Coral (comfort, hope)
-        'theme-secondary-light': '#FFB8A3',
-        'theme-secondary-dark': '#E67A63',
+        'theme-secondary': '#C576FF',
+        'theme-secondary-light': '#D395FF',
+        'theme-secondary-dark': '#A85FE0',
 
-        'theme-accent': '#FFD89B',      // Soft Gold (warmth)
-        'theme-success': '#7BC67E',     // Soft Green (healing)
-        'theme-warning': '#F9C74F',     // Warm Yellow
-        'theme-danger': '#F28B82',      // Soft Red
+        'theme-accent': '#FFD166',
+        'theme-success': '#7BC67E',
+        'theme-warning': '#F9C74F',
+        'theme-danger': '#FF5C8D',
+        'theme-pulse': '#FF5C8D',
 
-        'theme-text-main': '#E8F4F8',   // Almost White
-        'theme-text-subtle': '#B0C4DE',  // Light Steel Blue
-        'theme-text-muted': '#7A96B0',   // Muted Blue
+        'theme-text-main': '#F0EBFF',
+        'theme-text-subtle': '#A99BDB',
+        'theme-text-muted': '#7F73B0',
 
         background: "var(--background)",
         foreground: "var(--foreground)",
@@ -42,10 +41,10 @@ const config: Config = {
         '4xl': '2rem',
       },
       boxShadow: {
-        'primary-glow': '0 0 25px 0 rgba(91, 163, 163, 0.4)',
-        'secondary-glow': '0 0 30px 0 rgba(255, 155, 133, 0.3)',
+        'primary-glow': '0 0 25px 0 rgba(138, 108, 255, 0.5)',
+        'secondary-glow': '0 0 30px 0 rgba(197, 118, 255, 0.4)',
         'card': '0 8px 20px rgba(0, 0, 0, 0.25)',
-        'card-hover': '0 15px 40px rgba(91, 163, 163, 0.3)',
+        'card-hover': '0 15px 40px rgba(138, 108, 255, 0.35)',
         'soft': '0 4px 12px rgba(0, 0, 0, 0.1)',
       },
       keyframes: {

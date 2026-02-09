@@ -11,19 +11,18 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
-    { href: '/dashboard', label: 'Overview', icon: '⭐' },
+    { href: '/dashboard', label: 'Overview', icon: '🏠' },
     { href: '/mood', label: 'Mood Journal', icon: '📔' },
     { href: '/tools', label: 'Coping Tools', icon: '🧘' },
-    { href: '/chat', label: 'AI Support Chat', icon: '💬' },
+    { href: '/community', label: 'Community support', icon: '💬' },
     { href: '/analytics', label: 'Analytics', icon: '📊' },
-    { href: '/settings', label: 'Settings', icon: '⚙️' },
+    { href: '/settings', label: 'Settings', icon: '⚙' },
 ];
 
 export default function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const logout = useAuthStore((state) => state.logout);
-    const user = useAuthStore((state) => state.user);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     const handleLogout = async () => {
@@ -42,7 +41,7 @@ export default function Sidebar() {
             <button
                 id="menuBtn"
                 onClick={() => setIsMobileOpen(!isMobileOpen)}
-                className="sm:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-theme-panel backdrop-blur-lg text-theme-text-main hover:scale-110 active:scale-95 transition-transform shadow-lg"
+                className="md:hidden p-2 rounded-lg bg-theme-panel backdrop-blur-lg text-white mb-4 fixed top-4 left-4 z-50 hover:scale-110 active:scale-95 transition-transform"
                 aria-label="Toggle menu"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -58,27 +57,25 @@ export default function Sidebar() {
             */}
             <aside
                 id="sidebar"
-                className={`fixed inset-y-0 left-0 w-64 bg-theme-panel backdrop-blur-xl border-r border-theme-primary/20 shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-in-out z-40 
+                className={`fixed inset-y-0 left-0 w-64 bg-theme-panel backdrop-blur-xl border-r border-theme-primary/20 shadow-2xl p-6 flex flex-col transition-transform duration-500 ease-in-out z-40 
                 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'}`}
             >
                 {/* Logo & Title */}
                 <div className="flex items-center mb-8">
-                    <div className="h-10 w-10 mr-3 rounded-full bg-gradient-to-br from-theme-primary to-theme-primary-light flex items-center justify-center text-xl shadow-primary-glow">
-                        🧘‍♀️
-                    </div>
-                    <h2 className="text-2xl font-bold text-white">Sahaay AI</h2>
+                    <img
+                        src="/static/logo.png"
+                        alt="Sahaay-AI Logo"
+                        className="h-12 w-12 mr-3 rounded-full"
+                        loading="lazy"
+                        onError={(event) => {
+                            (event.currentTarget as HTMLImageElement).src = '/static/logo.svg';
+                        }}
+                    />
+                    <h2 className="text-3xl font-bold text-white">Sahaay AI</h2>
                 </div>
 
-                {/* User Info (Optional - matches Flask design which usually has user info or icon) */}
-                {user && (
-                    <div className="mb-6 p-3 rounded-xl bg-theme-hover/20 border border-theme-primary/10">
-                        <p className="text-xs text-theme-text-subtle">Welcome back,</p>
-                        <p className="font-bold text-theme-text-main truncate text-sm">{user.username || user.name || 'Friend'}</p>
-                    </div>
-                )}
-
                 {/* Navigation Links */}
-                <nav className="space-y-2 flex-1 relative overflow-y-auto max-h-[calc(100vh-250px)] no-scrollbar">
+                <nav className="space-y-2 flex-1">
                     {navLinks.map((link) => {
                         const isActive = pathname === link.href;
                         return (
@@ -95,10 +92,10 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Logout Button */}
-                <div className="mt-auto pt-4 border-t border-theme-primary/20">
+                <div className="mt-auto pt-4">
                     <button
                         onClick={handleLogout}
-                        className="sidebar-link w-full text-left text-theme-text-subtle hover:bg-theme-danger/20 hover:text-white group"
+                        className="sidebar-link w-full text-left text-theme-text-subtle hover:bg-red-500/20 hover:text-white group"
                     >
                         <span className="text-xl group-hover:-translate-x-1 transition-transform">🚪</span>
                         <span>Logout</span>

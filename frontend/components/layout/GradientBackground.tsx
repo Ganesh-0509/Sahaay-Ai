@@ -35,11 +35,11 @@ export default function GradientBackground() {
                 this.speedX = Math.random() * 1 - 0.5;
                 this.speedY = Math.random() * 1 - 0.5;
 
-                // Calming teal colors
+                // Purple glow palette to match Flask layout
                 const colors = [
-                    `rgba(91, 163, 163, ${Math.random() * 0.4 + 0.2})`,   // Teal
-                    `rgba(124, 196, 196, ${Math.random() * 0.3 + 0.1})`,  // Light Teal
-                    `rgba(255, 155, 133, ${Math.random() * 0.2 + 0.1})`,  // Coral
+                    `rgba(138, 108, 255, ${Math.random() * 0.5 + 0.2})`,
+                    `rgba(197, 118, 255, ${Math.random() * 0.4 + 0.2})`,
+                    `rgba(255, 209, 102, ${Math.random() * 0.3 + 0.1})`,
                 ];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
             }
@@ -100,7 +100,7 @@ export default function GradientBackground() {
         <>
             {/* Animated Gradient Background */}
             <div className="fixed inset-0 z-[-2]" style={{
-                background: 'linear-gradient(-45deg, #0A1929, #132F4C, #1E4976, #0A1929)',
+                background: 'linear-gradient(-45deg, #1A103C, #3E2D7A, #1A103C, #8A6CFF)',
                 backgroundSize: '400% 400%',
                 animation: 'animatedGradient 20s ease infinite'
             }} />

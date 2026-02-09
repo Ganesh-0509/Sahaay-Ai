@@ -15,10 +15,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 - Desktop (sm+): ml-64 (Sidebar is fixed, push content right)
                 - Transition matches sidebar for smoothness (though sidebar is fixed, content margin needs to jump or transition)
             */}
-            <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto ml-0 sm:ml-64 transition-all duration-300 relative z-10 w-full">
-                <div className="max-w-7xl mx-auto">
-                    {children}
-                </div>
+            <main
+                id="mainContent"
+                className="flex-1 p-6 sm:p-8 overflow-y-auto ml-0 md:ml-64 transition-all duration-300 relative z-10"
+            >
+                {children}
             </main>
         </div>
     );
